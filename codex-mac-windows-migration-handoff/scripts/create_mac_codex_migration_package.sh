@@ -110,6 +110,8 @@ Cookies
 Cookies-journal
 Login Data
 Login Data For Account
+Login Data-journal
+Login Data For Account-journal
 Local Storage/
 Session Storage/
 Network/Cookies
@@ -127,6 +129,7 @@ fi
 if [[ "$MODE" == "standard" ]]; then
   cat >> "$EXCLUDE_FILE" <<'EOF'
 logs_*.sqlite
+logs_*.sqlite*
 logs/
 Library/Logs/
 Cache/
