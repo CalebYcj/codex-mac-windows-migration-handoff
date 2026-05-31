@@ -1,9 +1,9 @@
-$ErrorActionPreference = "Stop"
-
 param(
     [string]$PackageRoot = "",
     [switch]$Json
 )
+
+$ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackageRoot)) {
     $PackageRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
