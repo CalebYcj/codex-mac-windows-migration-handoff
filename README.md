@@ -31,6 +31,17 @@ AI agent workspace migration, OpenAI Codex desktop migration
 
 This repository contains a Codex skill for migrating Codex data, conversations, memories, skills, plugins, and project context between computers, especially from macOS to Windows.
 
+## What This Repository Is
+
+This repository is both an agent-readable skill and a small script toolkit:
+
+- `SKILL.md` is the main instruction file for Codex or another AI agent. It tells the agent when to use this workflow, what to migrate, what to exclude, and how to report results.
+- `scripts/` contains the executable helpers that actually package, restore, inventory, and verify the migration.
+- `references/` contains extra path-mapping notes that an agent can load when needed.
+- `README.md` and `README.zh-CN.md` are for humans, GitHub visitors, search engines, and AI search/GEO.
+
+So the skill is not just a shell script. It is a reusable agent workflow with scripts attached for the parts that should be deterministic.
+
 The main skill lives at:
 
 ```text

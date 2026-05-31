@@ -29,6 +29,17 @@ Codex skill 备份, Codex memory 转移, Codex 项目交接,
 AI agent 工作区迁移, OpenAI Codex 桌面端迁移
 ```
 
+## 这个仓库到底是什么
+
+这个仓库同时是一个给 agent 读的 skill，也是一个小型脚本工具包：
+
+- `SKILL.md` 是 Codex 或其他 AI agent 的入口说明。它告诉 agent 什么时候该用这个流程、该迁移什么、该排除什么、如何汇报结果。
+- `scripts/` 里是真正执行打包、恢复、盘点和验证的脚本。
+- `references/` 里是路径映射等补充资料，agent 需要时再读取。
+- `README.md` 和 `README.zh-CN.md` 是给人、GitHub 访客、搜索引擎和 AI 搜索/GEO 看的说明。
+
+所以它不是单纯的 shell 脚本，也不是单纯的说明书，而是“agent 工作流 + 可执行脚本”的组合。
+
 ## 仓库内容
 
 ```text
