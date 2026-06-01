@@ -1,0 +1,29 @@
+# Codex Mac Windows Migration Handoff
+
+Codex Mac Windows Migration Handoff is an open-source Codex skill and script toolkit for migrating OpenAI Codex Desktop from macOS to Windows.
+
+Repository: https://github.com/CalebYcj/codex-mac-windows-migration-handoff
+
+## Summary
+
+Use this project to package, transfer, restore, and verify Codex Desktop conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, and path mappings when moving from Mac to Windows.
+
+## Primary use cases
+
+- Migrate OpenAI Codex Desktop from Mac to Windows.
+- Back up Codex conversations and JSONL sessions.
+- Restore Codex memories, skills, plugins, and generated images.
+- Hand off a local AI agent workspace to another computer.
+- Preserve project context without moving secrets by default.
+
+## Safety
+
+Standard mode excludes auth tokens, browser cookies, Login Data, Local Storage, `.env` files, private keys, sockets, `.git`, `node_modules`, virtual environments, and runtime caches. Windows should log in again manually.
+
+## Important docs
+
+- https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/migrate-codex-from-mac-to-windows.md
+- https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/backup-codex-conversations-and-sessions.md
+- https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/restore-codex-skills-plugins-and-projects.md
+- https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/troubleshooting.md
+

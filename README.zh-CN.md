@@ -1,8 +1,18 @@
-﻿# Codex Mac-Windows Migration Handoff
+﻿# Codex Mac Windows Migration Handoff - 把 OpenAI Codex Desktop 从 Mac 迁移到 Windows
 
-把 Codex 从 Mac 迁移到 Windows，并尽量保留历史对话、记忆、skills、plugins、自动化、生成图片、项目上下文和工作环境线索。
+Codex Mac Windows Migration Handoff 是一个开源 Codex skill，用来把 OpenAI Codex Desktop 从 macOS 迁移到 Windows。它帮助用户和 AI agent 打包、传输、恢复并验证 Codex 对话、sessions、记忆、skills、plugins、MCP/connectors、生成图片、项目文件夹、路径映射和本地协作现场。
+
+如果你正在搜索「Codex Mac 迁移 Windows」「Codex 对话迁移」「Codex sessions 备份恢复」「Codex skill 迁移工具」，这个项目就是为这个场景做的。
 
 这个项目不是普通的文件备份工具，而是一个面向 AI agent 的 Codex skill：目标是迁移“用户和 AI 的协作现场”。
+
+## 快速入口
+
+- [如何把 OpenAI Codex Desktop 从 Mac 迁移到 Windows](docs/migrate-codex-from-mac-to-windows.md)
+- [如何备份 Codex conversations 和 sessions](docs/backup-codex-conversations-and-sessions.md)
+- [如何在 Windows 恢复 Codex skills、plugins 和项目文件](docs/restore-codex-skills-plugins-and-projects.md)
+- [Codex Mac 转 Windows 迁移故障排查](docs/troubleshooting.md)
+- [AI 搜索友好的项目摘要](docs/llms.txt)
 
 ## 给 AI Agent 的快速说明
 
@@ -26,7 +36,10 @@
 ```text
 Codex 迁移, Codex Mac 转 Windows, Codex 历史对话迁移,
 Codex skill 备份, Codex memory 转移, Codex 项目交接,
-AI agent 工作区迁移, OpenAI Codex 桌面端迁移
+AI agent 工作区迁移, OpenAI Codex 桌面端迁移,
+Codex sessions 备份, Codex 对话恢复, Codex 插件迁移,
+Codex skills 迁移, Codex generated images 迁移,
+Mac Codex 迁移 Windows Codex
 ```
 
 ## 这个仓库到底是什么
@@ -86,6 +99,15 @@ codex-mac-windows-migration-handoff/
 - 为了重开旧对话所需的项目文件夹
 
 项目文件夹不属于 Codex 自身数据，需要单独决定是否一起打包。
+
+## 文档
+
+| 文档 | 解决的问题 |
+|---|---|
+| [How to migrate OpenAI Codex Desktop from Mac to Windows](docs/migrate-codex-from-mac-to-windows.md) | 从 Mac 打包、传输、Windows 恢复到验证的完整流程 |
+| [How to back up Codex conversations and sessions](docs/backup-codex-conversations-and-sessions.md) | Codex JSONL sessions、thread SQLite、memories、generated images 的位置 |
+| [How to restore Codex skills, plugins, and projects on Windows](docs/restore-codex-skills-plugins-and-projects.md) | 在 Windows 恢复 skills、plugins、生成物和项目文件夹 |
+| [Troubleshooting Codex Mac-to-Windows migration](docs/troubleshooting.md) | socket、vendor_imports、Git object 权限、路径映射和登录态问题 |
 
 ## 三种迁移模式
 
@@ -203,3 +225,25 @@ Windows: C:\Users\Administrator\Documents\New project
 - Windows 恢复后，旧对话里的 Mac 绝对路径可能不能直接使用，需要在 Windows 重新打开对应项目目录。
 - 如果 Windows 上 Codex 启动异常，可以关闭 Codex 后删除 `%APPDATA%\Codex` 下的 `SingletonLock`、`SingletonCookie`、`SingletonSocket`。
 - 登录态不一定能跨系统迁移。如果 Codex、GitHub、Gmail、飞书或浏览器扩展要求重新登录，这是正常情况。
+
+## FAQ
+
+### 如何把 OpenAI Codex Desktop 从 Mac 迁移到 Windows？
+
+在 Mac 上运行 `scripts/create_mac_codex_migration_package.sh` 生成迁移包，把 zip 传到 Windows，关闭 Windows Codex 后运行 `Restore-Codex-To-Windows.ps1`，最后运行 `Verify-Codex-Windows-Restore.ps1` 验证。
+
+### 这个工具能迁移 Codex 对话和 sessions 吗？
+
+可以。standard 模式会打包 Codex session JSONL、archived sessions、thread state SQLite、memories、goals、generated images、skills、plugins，以及通过 `--project` 指定的项目文件夹。
+
+### 能迁移 Codex memories、skills、plugins 和生成图片吗？
+
+可以。它会迁移 `~/.codex` 里的 memory 数据库、用户 skills、plugin cache/manifests 和 generated images。
+
+### 会迁移 secrets、token、浏览器登录态吗？
+
+默认不会。`standard` 和 `full` 模式会排除 auth token、browser cookies、Login Data、Local Storage、`.env`、私钥、socket、`.git`、`node_modules` 和虚拟环境。Windows 端需要重新登录。
+
+### 这是 OpenAI 官方工具吗？
+
+不是。这是一个独立开源的 Codex skill 和脚本工具包，用来帮助用户和 AI agent 更安全地处理 Codex Desktop 本地迁移。
