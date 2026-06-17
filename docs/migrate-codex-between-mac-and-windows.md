@@ -85,4 +85,8 @@ Expect to log in again on the target computer. Cross-machine login state is frag
 
 ## Which Path Is Most Tested?
 
-The original successful real-world path was Mac to Windows. The current skill extends the same package layout to Windows to Mac, Windows to Windows, and Mac to Mac. For any new direction, run the target verifier and check that sessions, skills, plugins, generated images, and project folders are visible before deleting anything from the source computer.
+The original successful real-world path was Mac to Windows. Windows to Windows has passed an isolated fake-profile simulation on Windows. Mac to Mac has passed an isolated fake-HOME simulation on an Intel Mac running macOS 12.7.6.
+
+Windows to Mac is layout-validated because Windows and Mac packages use the same neutral package layout, but it still needs a real Windows-origin zip restored on Mac for full end-to-end validation.
+
+For details, see [Validation status](validation-status.md). For any new direction, run the target verifier and check that sessions, skills, plugins, generated images, and project folders are visible before deleting anything from the source computer.

@@ -9,10 +9,10 @@ Use this skill to make a repeatable migration handoff for the user's Codex colla
 
 Supported directions:
 
-- Mac -> Windows
-- Windows -> Mac
-- Windows -> Windows
-- Mac -> Mac
+- Mac -> Windows: real-world migration succeeded.
+- Windows -> Mac: neutral layout validated; full Windows-origin zip restore on Mac still pending.
+- Windows -> Windows: isolated fake-profile simulation passed.
+- Mac -> Mac: isolated fake-HOME simulation passed on Intel Mac.
 
 ## Positioning
 
@@ -78,6 +78,14 @@ Real Mac source validation found this useful shape:
 - `~/Library/Application Support/Codex`: desktop app Chromium profile; do not restore cookies/login databases by default.
 - `%USERPROFILE%\.codex`: Windows primary Codex state with the same sessions, SQLite state, memories, skills, plugins, and generated images shape.
 - `%APPDATA%\Codex`: Windows desktop app profile; do not restore cookies/login databases by default.
+
+## Validation Caveats
+
+- Treat Mac -> Windows as the original real-world success path.
+- Treat Windows -> Windows and Mac -> Mac as isolated-simulation validated, not separate-machine live restores.
+- Treat Windows -> Mac as plausible because the package layout is neutral, but ask the user to run a target Mac restore with a real Windows-origin zip before calling it fully end-to-end validated.
+- Mac restore scripts may prompt if any Codex process is running, even during fake-HOME simulations.
+- Project folders are packaged under `projects/` but are intentionally not auto-moved into the target home; tell the user to move or reopen them manually.
 
 ## Scripts
 

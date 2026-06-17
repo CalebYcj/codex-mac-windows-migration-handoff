@@ -11,15 +11,16 @@ Use this project when you need to migrate Codex Desktop from Mac to Windows, Win
 - [How to back up Codex conversations and sessions](backup-codex-conversations-and-sessions.md)
 - [How to restore Codex skills, plugins, and projects](restore-codex-skills-plugins-and-projects.md)
 - [Troubleshooting Codex migration](troubleshooting.md)
+- [Validation status](validation-status.md)
 
 ## Supported Directions
 
 | Source | Target | Status |
 |---|---|---|
-| Mac | Windows | Primary tested path |
-| Windows | Mac | Script-supported path; verify on target Mac |
-| Windows | Windows | Script-supported path; verify on target Windows |
-| Mac | Mac | Script-supported path; verify on target Mac |
+| Mac | Windows | Real-world migration succeeded |
+| Windows | Mac | Layout validated; full Windows-origin restore on Mac still pending |
+| Windows | Windows | Isolated simulation passed |
+| Mac | Mac | Isolated simulation passed on Intel Mac |
 
 ## What It Migrates
 
