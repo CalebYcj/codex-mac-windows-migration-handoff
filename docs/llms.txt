@@ -1,29 +1,50 @@
 # Codex Mac Windows Migration Handoff
 
-Codex Mac Windows Migration Handoff is an open-source Codex skill and script toolkit for migrating OpenAI Codex Desktop from macOS to Windows.
+Codex Mac Windows Migration Handoff is an open-source Codex skill and script toolkit for migrating OpenAI Codex Desktop between macOS and Windows computers.
 
 Repository: https://github.com/CalebYcj/codex-mac-windows-migration-handoff
 
 ## Summary
 
-Use this project to package, transfer, restore, and verify Codex Desktop conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, and path mappings when moving from Mac to Windows.
+Use this project to package, transfer, restore, and verify Codex Desktop conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, and path mappings when moving Codex between computers.
+
+Supported migration directions:
+
+- Mac to Windows
+- Windows to Mac
+- Windows to Windows
+- Mac to Mac
 
 ## Primary use cases
 
 - Migrate OpenAI Codex Desktop from Mac to Windows.
+- Migrate OpenAI Codex Desktop from Windows to Mac.
+- Move Codex Desktop from one Windows computer to another Windows computer.
+- Move Codex Desktop from one Mac to another Mac.
 - Back up Codex conversations and JSONL sessions.
 - Restore Codex memories, skills, plugins, and generated images.
 - Hand off a local AI agent workspace to another computer.
 - Preserve project context without moving secrets by default.
 
+## Script map
+
+- Package on Mac: `codex-mac-windows-migration-handoff/scripts/create_mac_codex_migration_package.sh`
+- Package on Windows: `codex-mac-windows-migration-handoff/scripts/create_windows_codex_migration_package.ps1`
+- Restore to Mac: `Restore-Codex-To-Mac.sh` in the generated package, or `scripts/restore_codex_to_mac.sh`
+- Restore to Windows: `Restore-Codex-To-Windows.ps1` in the generated package, or `scripts/restore_codex_to_windows.ps1`
+- Verify Mac restore: `Verify-Codex-Mac-Restore.sh`
+- Verify Windows restore: `Verify-Codex-Windows-Restore.ps1`
+
 ## Safety
 
-Standard mode excludes auth tokens, browser cookies, Login Data, Local Storage, `.env` files, private keys, sockets, `.git`, `node_modules`, virtual environments, and runtime caches. Windows should log in again manually.
+Standard mode excludes auth tokens, browser cookies, Login Data, Local Storage, `.env` files, private keys, sockets, `.git`, `node_modules`, virtual environments, and runtime caches. The target computer should log in again manually.
+
+Do not rewrite old Codex session JSONL files in bulk. Preserve old paths in history and reopen matching project folders on the target computer.
 
 ## Important docs
 
+- https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/migrate-codex-between-mac-and-windows.md
 - https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/migrate-codex-from-mac-to-windows.md
 - https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/backup-codex-conversations-and-sessions.md
 - https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/restore-codex-skills-plugins-and-projects.md
 - https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/troubleshooting.md
-

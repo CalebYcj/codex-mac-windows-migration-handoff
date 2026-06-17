@@ -2,7 +2,7 @@
 
 Codex Desktop stores local conversations and agent state across JSONL session files, SQLite databases, generated image folders, skills, and plugin cache directories. This guide explains what the migration skill backs up and why those files matter.
 
-## Important Codex Data Locations On Mac
+## Important Codex Data Locations
 
 | Path | Purpose |
 |---|---|
@@ -15,10 +15,14 @@ Codex Desktop stores local conversations and agent state across JSONL session fi
 | `~/.codex/skills` | User and system skills |
 | `~/.codex/plugins/cache` | Plugin bundles and manifests |
 | `~/Library/Application Support/Codex` | Codex desktop app profile and selected state |
+| `%USERPROFILE%\.codex` | Windows Codex sessions, skills, plugins, memories, and generated images |
+| `%APPDATA%\Codex` | Windows Codex desktop app profile and selected state |
 
 ## Backup Command
 
-Run standard mode on the Mac:
+Run standard mode on the source computer.
+
+On Mac:
 
 ```bash
 bash scripts/create_mac_codex_migration_package.sh \
@@ -26,7 +30,15 @@ bash scripts/create_mac_codex_migration_package.sh \
   --project "$HOME/Documents/New project"
 ```
 
-The generated package includes manifests, checksums, a Windows restore script, and a Windows verification script.
+On Windows:
+
+```powershell
+.\codex-mac-windows-migration-handoff\scripts\create_windows_codex_migration_package.ps1 `
+  -Mode standard `
+  -Project "$env:USERPROFILE\Documents\New project"
+```
+
+The generated package includes manifests, checksums, target restore scripts, and verification scripts.
 
 ## What Is Not Backed Up By Default
 

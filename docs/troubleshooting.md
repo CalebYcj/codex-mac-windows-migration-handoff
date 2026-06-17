@@ -1,10 +1,10 @@
-# Troubleshooting Codex Mac-to-Windows Migration
+# Troubleshooting Codex Migration
 
-This page lists common issues when migrating OpenAI Codex Desktop from Mac to Windows.
+This page lists common issues when migrating OpenAI Codex Desktop between Mac and Windows computers.
 
 ## Socket Or IPC File Copy Failure
 
-Some live Codex or Git cache folders can contain socket or IPC files. The Mac package script excludes `*.ipc`, `*.sock`, runtime folders, and process manager state by default.
+Some live Codex or Git cache folders can contain socket or IPC files. The package scripts exclude `*.ipc`, `*.sock`, runtime folders, and process manager state by default.
 
 ## `vendor_imports` Or Git Object Permission Denied
 
@@ -21,15 +21,15 @@ Codex session history can be large. If the package is too large, inspect:
 
 Avoid including `node_modules`, virtual environments, and Git object stores.
 
-## Windows Codex Requires Login Again
+## Target Codex Requires Login Again
 
 This is expected. Standard and full modes do not migrate browser login state, cookies, auth tokens, or private keys.
 
-## Old Conversations Reference Mac Paths
+## Old Conversations Reference Source Computer Paths
 
-Old threads may contain paths like `/Users/<name>/Documents/...`. On Windows, restore or move the project folder, then reopen it from Codex. Avoid direct JSONL path rewrites unless you have a verified backup and a parser-safe migration tool.
+Old threads may contain paths like `/Users/<name>/Documents/...` or `C:\Users\<name>\Documents\...`. On the target computer, restore or move the project folder, then reopen it from Codex. Avoid direct JSONL path rewrites unless you have a verified backup and a parser-safe migration tool.
 
 ## Chrome Plugin Or Native Host Is Disconnected
 
-Codex Chrome integration may need Windows-side setup. Reinstall or repair the Chrome plugin from Codex on Windows and confirm the Codex Chrome extension is installed and enabled in the same Chrome profile.
+Codex Chrome integration may need target-side setup. Reinstall or repair the Chrome plugin from Codex on the target computer and confirm the Codex Chrome extension is installed and enabled in the same Chrome profile.
 

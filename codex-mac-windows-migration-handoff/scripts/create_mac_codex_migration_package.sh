@@ -71,8 +71,8 @@ if [[ "$MODE" == "full-with-secrets" && "$ALLOW_SECRETS" != "true" ]]; then
 fi
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
-STAGE="$OUT_DIR/Codex-Windows-Migration-$STAMP"
-ZIP_PATH="$OUT_DIR/Codex-Windows-Migration-$STAMP.zip"
+STAGE="$OUT_DIR/Codex-Migration-Mac-Source-$STAMP"
+ZIP_PATH="$OUT_DIR/Codex-Migration-Mac-Source-$STAMP.zip"
 EXCLUDE_FILE="$STAGE/docs/rsync-excludes.txt"
 SENSITIVE_REPORT="$STAGE/docs/SENSITIVE-FILES.txt"
 ENV_REPORT="$STAGE/docs/ENV-INVENTORY.txt"
@@ -253,16 +253,18 @@ if [[ "$MODE" != "standard" ]]; then
   } > "$ENV_REPORT"
 fi
 
-cat > "$STAGE/README-Windows-Restore.txt" <<'EOF'
-Codex Mac -> Windows migration package
-======================================
+cat > "$STAGE/README-Restore.txt" <<'EOF'
+Codex migration package
+=======================
 
-Before restoring:
-1. Install Codex on Windows.
-2. Open it once, then close all Codex windows.
+This package uses a neutral layout so it can be restored to either Windows or Mac.
+
+Before restoring on any target:
+1. Install Codex on the target computer.
+2. Open it once on the target computer, then close all Codex windows.
 3. Unzip this package.
 
-Recommended restore:
+Windows restore:
 1. Open PowerShell in the unzipped folder.
 2. Run:
    Set-ExecutionPolicy -Scope Process Bypass
@@ -270,13 +272,25 @@ Recommended restore:
 3. Verify:
    .\Verify-Codex-Windows-Restore.ps1
 
+Mac restore:
+1. Open Terminal in the unzipped folder.
+2. Run:
+   bash Restore-Codex-To-Mac.sh
+3. Verify:
+   bash Verify-Codex-Mac-Restore.sh
+
 Manual mapping:
 home\.codex -> C:\Users\<you>\.codex
 appdata_roaming\Codex -> C:\Users\<you>\AppData\Roaming\Codex
 appdata_roaming\com.openai.codex -> C:\Users\<you>\AppData\Roaming\com.openai.codex
 appdata_roaming\OpenAI\Codex -> C:\Users\<you>\AppData\Roaming\OpenAI\Codex
 
-Project folders, if included, are under projects\. Move them to your desired Windows project location and reopen the folder in Codex.
+home/.codex -> ~/.codex
+appdata_roaming/Codex -> ~/Library/Application Support/Codex
+appdata_roaming/com.openai.codex -> ~/Library/Application Support/com.openai.codex
+appdata_roaming/OpenAI/Codex -> ~/Library/Application Support/OpenAI/Codex
+
+Project folders, if included, are under projects\. Move them to your desired project location and reopen the folder in Codex.
 
 If Codex asks you to log in again, log in normally.
 
@@ -285,6 +299,8 @@ By default this package is expected to exclude browser login state, auth.json,
 .env files, and private keys. If it was created with full-with-secrets, treat it
 like a password vault and transfer it only through a private channel.
 EOF
+
+cp -p "$STAGE/README-Restore.txt" "$STAGE/README-Windows-Restore.txt"
 
 cat > "$STAGE/Restore-Codex-To-Windows.ps1" <<'EOF'
 $ErrorActionPreference = "Stop"
@@ -335,6 +351,15 @@ EOF
 if [[ -f "$SCRIPT_DIR/verify_windows_codex_restore.ps1" ]]; then
   cp -p "$SCRIPT_DIR/verify_windows_codex_restore.ps1" "$STAGE/Verify-Codex-Windows-Restore.ps1"
 fi
+if [[ -f "$SCRIPT_DIR/restore_codex_to_mac.sh" ]]; then
+  cp -p "$SCRIPT_DIR/restore_codex_to_mac.sh" "$STAGE/Restore-Codex-To-Mac.sh"
+fi
+if [[ -f "$SCRIPT_DIR/verify_mac_codex_restore.sh" ]]; then
+  cp -p "$SCRIPT_DIR/verify_mac_codex_restore.sh" "$STAGE/Verify-Codex-Mac-Restore.sh"
+fi
+if [[ -f "$SCRIPT_DIR/collect_mac_codex_inventory.sh" ]]; then
+  cp -p "$SCRIPT_DIR/collect_mac_codex_inventory.sh" "$STAGE/Collect-Mac-Codex-Inventory.sh"
+fi
 
 {
   echo "created_at=$STAMP"
@@ -378,7 +403,7 @@ cat > "$STAGE/MANIFEST.json" <<EOF
   "notes": [
     "Path mappings are recorded rather than applied to JSONL sessions in place.",
     "Use docs/SENSITIVE-FILES.txt to review suspected sensitive files without exposing values.",
-    "Run Restore-Codex-To-Windows.ps1 only after closing Codex on Windows."
+    "Run the restore script for the target OS only after closing Codex on that target."
   ]
 }
 EOF

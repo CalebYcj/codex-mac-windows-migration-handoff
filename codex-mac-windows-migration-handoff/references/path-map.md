@@ -1,6 +1,18 @@
 # Codex Migration Path Map
 
-## Mac Source
+Use the neutral package layout as the bridge between Mac and Windows:
+
+- `home/.codex`
+- `appdata_roaming/Codex`
+- `appdata_roaming/com.openai.codex`
+- `appdata_roaming/OpenAI/Codex`
+- `appdata_local/...`
+- `mac_only/Library/Preferences`
+- `projects/...`
+
+This lets the same package restore to Mac or Windows.
+
+## Mac Paths
 
 - `~/.codex`: primary Codex state, conversations, logs, sessions, memories, skills, plugins, generated images, automations, config, auth files.
   - Common confirmed files/folders include `sessions`, `archived_sessions`, `session_index.jsonl`, `state_*.sqlite`, `memories_*.sqlite`, `goals_*.sqlite`, `logs_*.sqlite`, `generated_images`, `skills`, and `plugins/cache`.
@@ -26,7 +38,7 @@ Exclude sensitive files unless the user explicitly chooses `full-with-secrets`:
 - browser `Cookies`, `Login Data`, `Local Storage`, `Session Storage`
 - `.env`, `.env.*`, private keys, `*.pem`, `*.key`
 
-## Windows Target
+## Windows Paths
 
 - `%USERPROFILE%\.codex`: primary Codex state.
 - `%APPDATA%\Codex`: desktop app roaming data.
@@ -34,11 +46,23 @@ Exclude sensitive files unless the user explicitly chooses `full-with-secrets`:
 - `%APPDATA%\OpenAI\Codex`: OpenAI/Codex app support data.
 - `%LOCALAPPDATA%\...`: optional cache equivalents.
 
+## Neutral Package Mapping
+
+| Neutral package path | Mac restore path | Windows restore path |
+|---|---|---|
+| `home/.codex` | `~/.codex` | `%USERPROFILE%\.codex` |
+| `appdata_roaming/Codex` | `~/Library/Application Support/Codex` | `%APPDATA%\Codex` |
+| `appdata_roaming/com.openai.codex` | `~/Library/Application Support/com.openai.codex` | `%APPDATA%\com.openai.codex` |
+| `appdata_roaming/OpenAI/Codex` | `~/Library/Application Support/OpenAI/Codex` | `%APPDATA%\OpenAI\Codex` |
+| `appdata_local/Codex` | `~/Library/Caches/Codex` | `%LOCALAPPDATA%\Codex` |
+| `appdata_local/com.openai.codex` | `~/Library/Caches/com.openai.codex` | `%LOCALAPPDATA%\com.openai.codex` |
+| `projects/<name>` | user-chosen project folder | user-chosen project folder |
+
 ## Project Continuity
 
-Codex conversations may reference absolute source paths. Copy project folders separately or include them in the package under `projects/`. On Windows, reopen the project folder in Codex from its new path, for example:
+Codex conversations may reference absolute source paths. Copy project folders separately or include them in the package under `projects/`. Reopen the project folder in Codex from its new target path, for example:
 
 - Mac: `/Users/caleb/Documents/New project`
 - Windows: `C:\Users\Administrator\Documents\New project`
 
-Do not edit JSONL session files in place to rewrite paths. Record path mappings in the manifest and reopen the matching project folder on Windows so newer threads resolve to the Windows location.
+Do not edit JSONL session files in place to rewrite paths. Record path mappings in the manifest and reopen the matching project folder on the target computer so newer threads resolve to the target location.

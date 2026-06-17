@@ -1,18 +1,25 @@
-﻿---
+---
 name: codex-mac-windows-migration-handoff
-description: Package, transfer, restore, and verify Codex data when moving from Mac to Windows or between computers. Use when the user wants to migrate Codex conversations, sessions, memories, skills, plugins, automations, generated images, app data, project folders, developer environment inventory, path mappings, secrets handling, or reproduce a Codex workspace and previous dialogue on another machine, including Feishu/cloud-drive handoff instructions.
+description: "Use when the user wants to migrate, back up, restore, or reproduce a Codex Desktop workspace between Mac and Windows computers in any direction, including Mac to Windows, Windows to Mac, Windows to Windows, or Mac to Mac; relevant for Codex conversations, sessions, memories, skills, plugins, MCP/connectors, automations, generated images, app data, project folders, environment inventory, path mappings, secrets handling, and Feishu/cloud-drive/external-disk handoffs."
 ---
 
-# Codex Mac-Windows Migration Handoff
+# Codex Cross-Computer Migration Handoff
 
-Use this skill to make a repeatable migration handoff for the user's Codex collaboration workspace: Codex state, project folders, generated artifacts, skills/plugins, environment inventory, path mappings, and restore verification.
+Use this skill to make a repeatable migration handoff for the user's Codex collaboration workspace: Codex state, project folders, generated artifacts, skills/plugins, MCP/connectors, environment inventory, path mappings, and restore verification.
+
+Supported directions:
+
+- Mac -> Windows
+- Windows -> Mac
+- Windows -> Windows
+- Mac -> Mac
 
 ## Positioning
 
 Treat this folder as an agent workflow plus executable helpers:
 
 - `SKILL.md` is the agent-facing procedure and decision guide.
-- `scripts/` contains deterministic helpers for packaging on Mac, restoring on Windows, collecting inventory, and verifying counts.
+- `scripts/` contains deterministic helpers for packaging on Mac or Windows, restoring to Mac or Windows, collecting inventory, and verifying counts.
 - `references/` contains supplemental path-mapping details.
 - The repository README files are human-facing documentation and search/GEO entry points.
 
@@ -21,9 +28,9 @@ Do not treat the skill as only a script. Use the instructions to decide mode, sa
 ## Workflow
 
 1. Identify source and target OS, usernames, and transfer channel.
-   - Mac source paths usually include `~/.codex`, `~/Library/Application Support/Codex`, `~/Library/Application Support/com.openai.codex`, and `~/Library/Application Support/OpenAI/Codex`.
+   - Mac paths usually include `~/.codex`, `~/Library/Application Support/Codex`, `~/Library/Application Support/com.openai.codex`, and `~/Library/Application Support/OpenAI/Codex`.
    - Mac support paths can also include `~/Library/Caches/Codex`, `~/Library/Logs/com.openai.codex`, Chrome native host manifests, and Codex preferences.
-   - Windows target paths usually include `%USERPROFILE%\.codex`, `%APPDATA%\Codex`, `%APPDATA%\com.openai.codex`, and `%APPDATA%\OpenAI\Codex`.
+   - Windows paths usually include `%USERPROFILE%\.codex`, `%APPDATA%\Codex`, `%APPDATA%\com.openai.codex`, and `%APPDATA%\OpenAI\Codex`.
    - Project files are separate from Codex data. Ask for, detect, or include project folders such as `~/Documents/New project`.
 
 2. Choose a migration mode before packaging.
@@ -31,9 +38,11 @@ Do not treat the skill as only a script. Use the instructions to decide mode, sa
    - `full`: include standard data plus logs/caches and an environment inventory. Still exclude secrets and browser login state.
    - `full-with-secrets`: include sensitive auth/token/env/login-state files only when the user explicitly asks for it. Require `--i-understand-secrets`; treat the package like a password vault.
 
-3. On the source Mac, prefer generating a migration package with `scripts/create_mac_codex_migration_package.sh`.
-   - Best practice: install/open Codex once on the Windows computer, then close Codex before restoring.
-   - For the cleanest package, run the Mac script from Terminal after closing Codex. If running from inside Codex, tell the user that active SQLite/log files can change while copying; verify package size and rerun if needed.
+3. On the source computer, generate a neutral migration package.
+   - Mac source: run `scripts/create_mac_codex_migration_package.sh`.
+   - Windows source: run `scripts/create_windows_codex_migration_package.ps1`.
+   - Best practice: install/open Codex once on the target computer, then close Codex before restoring.
+   - For the cleanest package, run the packaging script after closing Codex. If running from inside Codex, tell the user that active SQLite/log files can change while copying; verify package size and rerun if needed.
    - Include optional project folders with repeated `--project /path/to/project` arguments.
    - Use the script's default exclusions for runtime/cache/dev files such as `.tmp`, `process_manager`, `vendor_imports`, `.git`, `node_modules`, `.venv`, sockets, and browser login databases. These exclusions are necessary because real Mac packages can fail on socket files and unreadable Git/cache objects.
 
@@ -41,16 +50,18 @@ Do not treat the skill as only a script. Use the instructions to decide mode, sa
    - Feishu, cloud drive, LAN share, AirDrop-to-phone-to-PC, or external disk are all acceptable.
    - Treat the package as private: it can contain auth tokens, conversation history, memories, generated files, and logs.
 
-5. On Windows, unzip and run the included `Restore-Codex-To-Windows.ps1`.
-   - The restore script backs up existing target directories before copying.
-   - If execution policy blocks it, run `Set-ExecutionPolicy -Scope Process Bypass` in the same PowerShell session.
-   - If Codex fails to start, close Codex and delete stale `SingletonLock`, `SingletonCookie`, and `SingletonSocket` under `%APPDATA%\Codex`.
+5. On the target computer, unzip and run the restore script for that OS.
+   - Windows target: run `Restore-Codex-To-Windows.ps1`. If execution policy blocks it, run `Set-ExecutionPolicy -Scope Process Bypass` in the same PowerShell session.
+   - Mac target: run `bash Restore-Codex-To-Mac.sh`.
+   - Restore scripts back up existing target directories before copying.
+   - If Codex fails to start, close Codex and delete stale `SingletonLock`, `SingletonCookie`, and `SingletonSocket` under the target Codex app support directory.
 
 6. Verify continuity.
    - Open Codex and check recent threads, skills, plugins, memories, generated images, and automations.
-   - Run `scripts/verify_windows_codex_restore.ps1` after restore to count sessions, skills, plugin manifests, generated images, SQLite files, package metadata, and project candidates.
-   - Reopen the project folder from its new Windows location if old conversations reference Mac paths like `/Users/<name>/...`.
-   - If a project was included in the package, move it from `projects/` to the desired Windows folder and update/reopen the workspace in Codex.
+   - Windows target: run `scripts/verify_windows_codex_restore.ps1` or the package copy `Verify-Codex-Windows-Restore.ps1`.
+   - Mac target: run `scripts/verify_mac_codex_restore.sh` or the package copy `Verify-Codex-Mac-Restore.sh`.
+   - Reopen the project folder from its new target location if old conversations reference source paths like `/Users/<name>/...` or `C:\Users\<name>\...`.
+   - If a project was included in the package, move it from `projects/` to the desired target project folder and update/reopen the workspace in Codex.
 
 ## Known Source Findings
 
@@ -65,20 +76,26 @@ Real Mac source validation found this useful shape:
 - `~/.codex/skills`: user and project skills.
 - `~/.codex/plugins/cache`: plugin bundles/manifests.
 - `~/Library/Application Support/Codex`: desktop app Chromium profile; do not restore cookies/login databases by default.
+- `%USERPROFILE%\.codex`: Windows primary Codex state with the same sessions, SQLite state, memories, skills, plugins, and generated images shape.
+- `%APPDATA%\Codex`: Windows desktop app profile; do not restore cookies/login databases by default.
 
 ## Scripts
 
-- `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a Windows-oriented migration zip with restore script, README, manifest, checksums, and optional project folders.
-- `scripts/restore_codex_to_windows.ps1`: Standalone Windows restore script. The Mac package also embeds a copy named `Restore-Codex-To-Windows.ps1`.
+- `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a neutral migration zip with Windows/Mac restore scripts, README, manifest, checksums, and optional project folders.
+- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a neutral migration zip with Windows/Mac restore scripts, README, manifest, checksums, and optional project folders.
+- `scripts/restore_codex_to_windows.ps1`: Standalone Windows restore script. Packages also embed a copy named `Restore-Codex-To-Windows.ps1`.
+- `scripts/restore_codex_to_mac.sh`: Standalone Mac restore script. Packages also embed a copy named `Restore-Codex-To-Mac.sh`.
 - `scripts/collect_windows_codex_inventory.ps1`: Run on Windows before or after restore to summarize existing Codex data locations, sizes, and project folder candidates.
+- `scripts/collect_mac_codex_inventory.sh`: Run on Mac before or after restore to summarize existing Codex data locations, sizes, and project folder candidates.
 - `scripts/verify_windows_codex_restore.ps1`: Run on Windows after restore to verify restored paths, counts, package metadata, and project candidates.
+- `scripts/verify_mac_codex_restore.sh`: Run on Mac after restore to verify restored paths, counts, package metadata, and project candidates.
 
 ## Handoff Checklist
 
-When the user wants another Codex instance on the source Mac to help, send a short instruction like:
+When the user wants another Codex instance on the source computer to help, send a short instruction like:
 
 ```text
-Use the codex-mac-windows-migration-handoff workflow. Create a standard Mac-to-Windows Codex migration package, include ~/.codex, Codex Application Support folders, and these project folders: <paths>. Exclude auth files, browser login state, .env files, private keys, sockets, .git, node_modules, and virtualenvs. Put the zip on Desktop and tell me the zip path, size, manifest summary, sensitive-file report, and checksum.
+Use the codex-mac-windows-migration-handoff workflow. Create a standard <source OS>-to-<target OS> Codex migration package, include Codex data folders and these project folders: <paths>. Exclude auth files, browser login state, .env files, private keys, sockets, .git, node_modules, and virtualenvs. Put the zip on Desktop and tell me the zip path, size, manifest summary, sensitive-file report, checksum, and target restore command.
 ```
 
 Before finalizing, report:
@@ -86,6 +103,6 @@ Before finalizing, report:
 - Package path and size.
 - Migration mode used.
 - Whether projects were included or still need separate copying.
-- Exact Windows restore steps.
+- Exact restore steps for the target OS.
 - Counts for sessions, skills, plugin manifests, generated images, project files, and important SQLite files when available.
 - Any caveats about login state, secrets, platform-specific paths, or live-copy consistency.
