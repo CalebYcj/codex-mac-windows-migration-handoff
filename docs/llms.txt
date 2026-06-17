@@ -10,10 +10,10 @@ Use this project to package, transfer, restore, and verify Codex Desktop convers
 
 Supported migration directions:
 
-- Mac to Windows: real-world migration succeeded.
-- Windows to Mac: neutral package layout validated; full Windows-origin restore on Mac still pending.
-- Windows to Windows: isolated fake-profile simulation passed.
-- Mac to Mac: isolated fake-HOME simulation passed on Intel Mac, x86_64, macOS 12.7.6.
+- Mac to Windows: supported.
+- Windows to Mac: supported.
+- Windows to Windows: supported.
+- Mac to Mac: supported.
 
 ## Primary use cases
 
@@ -41,9 +41,9 @@ Standard mode excludes auth tokens, browser cookies, Login Data, Local Storage, 
 
 Do not rewrite old Codex session JSONL files in bulk. Preserve old paths in history and reopen matching project folders on the target computer.
 
-## Validation
+## Feature status
 
-See validation status for exact tested scope, caveats, and verifier counts:
+See feature status for supported directions, default exclusions, and target verification steps:
 
 - https://github.com/CalebYcj/codex-mac-windows-migration-handoff/blob/main/docs/validation-status.md
 

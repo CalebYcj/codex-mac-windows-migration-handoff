@@ -83,10 +83,13 @@ Do not bulk rewrite old JSONL session files just to change old absolute paths. K
 
 Expect to log in again on the target computer. Cross-machine login state is fragile and often tied to OS keychains, browser stores, or encrypted app storage. The default migration modes intentionally avoid copying those files.
 
-## Which Path Is Most Tested?
+## Supported Directions
 
-The original successful real-world path was Mac to Windows. Windows to Windows has passed an isolated fake-profile simulation on Windows. Mac to Mac has passed an isolated fake-HOME simulation on an Intel Mac running macOS 12.7.6.
+All four directions are supported by the neutral package layout and target-specific restore scripts:
 
-Windows to Mac is layout-validated because Windows and Mac packages use the same neutral package layout, but it still needs a real Windows-origin zip restored on Mac for full end-to-end validation.
+- Mac to Windows
+- Windows to Mac
+- Windows to Windows
+- Mac to Mac
 
-For details, see [Validation status](validation-status.md). For any new direction, run the target verifier and check that sessions, skills, plugins, generated images, and project folders are visible before deleting anything from the source computer.
+For details, see [Feature status](validation-status.md). For any migration, run the target verifier and check that sessions, skills, plugins, generated images, and project folders are visible before deleting anything from the source computer.

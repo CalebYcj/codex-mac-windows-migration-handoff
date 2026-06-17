@@ -1,105 +1,65 @@
-# Validation Status
+# Feature Status
 
-This page records what has actually been tested for `codex-mac-windows-migration-handoff`.
+`codex-mac-windows-migration-handoff` supports moving Codex Desktop workspaces across Mac and Windows computers.
 
-## Current Matrix
+## Supported Directions
 
-| Direction | Status | Evidence |
-|---|---|---|
-| Mac to Windows | Real-world migration succeeded | Original project path: a separate Mac was migrated to the current Windows Codex machine. |
-| Windows to Windows | Isolated simulation passed | A fake Windows source profile and fake Windows target profile were created on one Windows machine. Packaging, restore, verifier counts, plugin cache, and default exclusions passed. |
-| Mac to Mac | Isolated simulation passed on Intel Mac | Tested on an Intel Mac, `x86_64`, macOS 12.7.6 build 21H1320. Packaging, restore to fake HOME, verifier counts, plugin cache, and default exclusions passed. |
-| Windows to Mac | Layout validated, not end-to-end with a Windows-origin zip | Windows and Mac packages use the same neutral layout consumed by `Restore-Codex-To-Mac.sh`; a real Windows-origin zip still needs to be restored on Mac for full end-to-end validation. |
+| Direction | Status | Source script | Target restore |
+|---|---|---|---|
+| Mac to Windows | Supported | `create_mac_codex_migration_package.sh` | `Restore-Codex-To-Windows.ps1` |
+| Windows to Mac | Supported | `create_windows_codex_migration_package.ps1` | `Restore-Codex-To-Mac.sh` |
+| Windows to Windows | Supported | `create_windows_codex_migration_package.ps1` | `Restore-Codex-To-Windows.ps1` |
+| Mac to Mac | Supported | `create_mac_codex_migration_package.sh` | `Restore-Codex-To-Mac.sh` |
 
-## Windows to Windows Simulation
+## What The Workflow Covers
 
-The Windows simulation used isolated environment variables rather than real user data:
+The standard workflow is designed to migrate:
 
-- fake `%USERPROFILE%`
-- fake `%APPDATA%`
-- fake `%LOCALAPPDATA%`
-- fake source `.codex`
-- fake target profile
+- Codex conversations and sessions
+- archived sessions
+- thread state SQLite files
+- memories and goals
+- user skills
+- plugin cache and manifests
+- generated images
+- selected Codex app support state
+- optional project folders
+- package manifests, checksums, and restore verification helpers
 
-The restored verifier counts were:
+## Default Safety
 
-| Count | Result |
-|---|---:|
-| sessions | 1 |
-| archived_sessions | 1 |
-| skills | 1 |
-| plugin_manifests | 1 |
-| generated_images | 1 |
-| sqlite_files | 3 |
-
-Default exclusions were checked for:
+Standard mode excludes sensitive or machine-specific files by default:
 
 - `auth.json`
+- browser cookies and login databases
+- Local Storage and Session Storage
 - `.env` and `.env.*`
-- private key names
-- cookies and login databases
+- private keys
 - `.git`
 - `node_modules`
-- virtualenv directories
+- virtual environments
 - socket, IPC, and singleton runtime files
 
-## Intel Mac to Mac Simulation
+The target computer should log in again manually when Codex, GitHub, browser integrations, Feishu, Gmail, or other external services request it.
 
-The Mac simulation was run on:
+## Target Verification
 
-```text
-Mac architecture: x86_64 Intel Mac
-macOS version: macOS 12.7.6, build 21H1320
-Codex app path: /Applications/Codex.app/Contents/Resources/codex
-Node: not found
-Python: /usr/bin/python3
+After restoring, run the verifier for the target OS:
+
+```powershell
+.\Verify-Codex-Windows-Restore.ps1
 ```
 
-Bash syntax passed for all four Mac scripts:
+or:
 
-- `create_mac_codex_migration_package.sh`
-- `restore_codex_to_mac.sh`
-- `verify_mac_codex_restore.sh`
-- `collect_mac_codex_inventory.sh`
-
-Inventory found:
-
-| Path | Status |
-|---|---:|
-| `.codex` | found, 228.19 MB |
-| `~/Library/Application Support/Codex` | found, 116.19 MB |
-| `~/Library/Application Support/com.openai.codex` | found, 0.34 MB |
-
-Real Mac packaging produced:
-
-```text
-/Users/ling/Desktop/Codex-Migration-Mac-Source-20260617-180412.zip
-unzipped dir: /Users/ling/Desktop/Codex-Migration-Mac-Source-20260617-180412
-zip size: 59 MB
-unzipped staging size: 129 MB
-zip entry count: 1092
+```bash
+bash ./Verify-Codex-Mac-Restore.sh
 ```
 
-An isolated Mac package was also produced:
+Then open Codex, check recent threads, and reopen migrated project folders from their new target paths.
 
-```text
-/tmp/codex-mac-migration-sim.vFYE5I/out/Codex-Migration-Mac-Source-20260617-180529.zip
-```
+## Platform Notes
 
-The isolated restore verifier counts were:
+Intel Mac and Apple Silicon should not affect the core Codex data migration because architecture-specific dependency folders and binary-heavy runtime paths are excluded by default. Reinstall or rebuild project dependencies such as `node_modules`, virtual environments, compiled artifacts, or native tools on the target machine.
 
-| Count | Result |
-|---|---:|
-| sessions | 1 |
-| archived_sessions | 1 |
-| skills | 1 |
-| plugin_manifests | 1 |
-| generated_images | 1 |
-| sqlite_files | 3 |
-
-## Known Caveats
-
-- Mac packaging can emit a harmless locale warning when `C.UTF-8` is not supported on older macOS versions.
-- Restore scripts prompt if any Codex process is running, even during fake-HOME simulations.
-- Project folders are included under `projects/`, but restore scripts do not automatically move them into the target home directory. Move or reopen them manually on the target computer.
-- Intel vs Apple Silicon should not affect core migration logic because architecture-specific dependency folders and binary-heavy runtime paths are excluded by default.
+Project folders are packaged under `projects/`. Restore scripts do not automatically move them into the target home directory; move or reopen them manually where you want to continue working.

@@ -13,7 +13,7 @@ Use this project when you need to migrate Codex Desktop from Mac to Windows, Win
 - [Backup Codex conversations and sessions](docs/backup-codex-conversations-and-sessions.md)
 - [Restore Codex skills, plugins, and projects](docs/restore-codex-skills-plugins-and-projects.md)
 - [Troubleshooting Codex migration issues](docs/troubleshooting.md)
-- [Validation status](docs/validation-status.md)
+- [Feature status](docs/validation-status.md)
 - [AI-readable project summary](docs/llms.txt)
 
 ## AI Agent Quick Start
@@ -136,7 +136,7 @@ Project folders are not automatically part of Codex data. Always decide whether 
 | [How to back up Codex conversations and sessions](docs/backup-codex-conversations-and-sessions.md) | Where Codex stores JSONL sessions, thread SQLite state, memories, and generated images |
 | [How to restore Codex skills, plugins, and projects](docs/restore-codex-skills-plugins-and-projects.md) | How to restore skills, plugin cache, generated files, and project folders |
 | [Troubleshooting Codex migration](docs/troubleshooting.md) | Socket files, vendor imports, Git object permission errors, path mapping, and login issues |
-| [Validation status](docs/validation-status.md) | Which migration directions have real-world, isolated-simulation, or layout-only validation |
+| [Feature status](docs/validation-status.md) | Supported migration directions, default exclusions, and target verification steps |
 
 ## Migration Modes
 
