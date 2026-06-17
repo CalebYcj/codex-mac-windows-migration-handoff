@@ -53,7 +53,7 @@ function Should-Skip {
     }
 
     if ($Mode -eq "standard") {
-        if ($StandardSkipNames -contains $Item.Name) { return $true }
+        if ($StandardSkipNames -ccontains $Item.Name) { return $true }
         if ($Item.Name -like "logs_*.sqlite*") { return $true }
     }
 
