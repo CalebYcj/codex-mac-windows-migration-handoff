@@ -53,7 +53,7 @@ After restoring, run the verifier for the target OS:
 or:
 
 ```bash
-bash ./Verify-Codex-Mac-Restore.sh
+bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
 Then open Codex, check recent threads, and reopen migrated project folders from their new target paths.
@@ -62,4 +62,6 @@ Then open Codex, check recent threads, and reopen migrated project folders from 
 
 Intel Mac and Apple Silicon should not affect the core Codex data migration because architecture-specific dependency folders and binary-heavy runtime paths are excluded by default. Reinstall or rebuild project dependencies such as `node_modules`, virtual environments, compiled artifacts, or native tools on the target machine.
 
-Project folders are packaged under `projects/`. Restore scripts do not automatically move them into the target home directory; move or reopen them manually where you want to continue working.
+Project folders are packaged under `projects/`. Mac restores can copy them automatically with `Restore-Codex-To-Mac.sh --restore-projects`, which defaults to `~/Documents/Codex-Restored-Projects`; pass `--projects-dir <dir>` to choose another location.
+
+Windows-to-Mac packages are generated with schema version 2, forward-slash zip entries, LF/no-BOM `SHA256SUMS.txt`, and both text and JSON manifests. Mac verification checks package checksums, selected chats when present, restored project folders, and forbidden-file counts.

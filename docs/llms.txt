@@ -30,14 +30,16 @@ Supported migration directions:
 
 - Package on Mac: `codex-rehome/scripts/create_mac_codex_migration_package.sh`
 - Package on Windows: `codex-rehome/scripts/create_windows_codex_migration_package.ps1`
-- Restore to Mac: `Restore-Codex-To-Mac.sh` in the generated package, or `scripts/restore_codex_to_mac.sh`
+- Restore to Mac: `Restore-Codex-To-Mac.sh --restore-projects` in the generated package, or `scripts/restore_codex_to_mac.sh --restore-projects`
 - Restore to Windows: `Restore-Codex-To-Windows.ps1` in the generated package, or `scripts/restore_codex_to_windows.ps1`
-- Verify Mac restore: `Verify-Codex-Mac-Restore.sh`
+- Verify Mac restore: `Verify-Codex-Mac-Restore.sh --json`
 - Verify Windows restore: `Verify-Codex-Windows-Restore.ps1`
 
 ## Safety
 
 Standard mode excludes auth tokens, browser cookies, Login Data, Local Storage, `.env` files, private keys, sockets, `.git`, `node_modules`, virtual environments, and runtime caches. The target computer should log in again manually.
+
+Windows packages use package schema version 2, forward-slash zip entries, LF/no-BOM `SHA256SUMS.txt`, `MANIFEST.txt`, and `MANIFEST.json`. On Mac, restore normalizes package permissions, fails if `home/.codex` is missing, and can restore projects to `~/Documents/Codex-Restored-Projects` with `--restore-projects`.
 
 Do not rewrite old Codex session JSONL files in bulk. Preserve old paths in history and reopen matching project folders on the target computer.
 

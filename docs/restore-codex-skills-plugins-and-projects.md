@@ -15,7 +15,7 @@ The generated package uses neutral folder names so the same package can be resto
 | `appdata_roaming/com.openai.codex` | `%APPDATA%\com.openai.codex` | `~/Library/Application Support/com.openai.codex` |
 | `appdata_roaming/OpenAI/Codex` | `%APPDATA%\OpenAI\Codex` | `~/Library/Application Support/OpenAI/Codex` |
 
-Project folders are included under `projects/` in the migration package. Move or copy them to the desired project location on the target computer, then reopen that folder from Codex.
+Project folders are included under `projects/` in the migration package. On Mac, pass `--restore-projects` to copy them into `~/Documents/Codex-Restored-Projects` by default, or pass `--projects-dir <dir>` to choose another location. On Windows, move or copy them to the desired project location, then reopen that folder from Codex.
 
 ## Restore To Windows
 
@@ -32,8 +32,16 @@ Set-ExecutionPolicy -Scope Process Bypass
 After unzipping the package and closing Codex:
 
 ```bash
-bash ./Restore-Codex-To-Mac.sh
-bash ./Verify-Codex-Mac-Restore.sh
+bash ./Restore-Codex-To-Mac.sh --restore-projects
+bash ./Verify-Codex-Mac-Restore.sh --json
+```
+
+For an isolated Mac test without touching the real profile:
+
+```bash
+TEST_HOME="$(mktemp -d /tmp/codex-win-to-mac.XXXXXX)"
+HOME="$TEST_HOME" bash ./Restore-Codex-To-Mac.sh --restore-projects
+HOME="$TEST_HOME" bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
 ## Path Mapping Notes

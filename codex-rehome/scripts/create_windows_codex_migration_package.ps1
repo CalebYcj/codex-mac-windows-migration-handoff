@@ -8,6 +8,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$PackageSchemaVersion = "2"
+
 if ($Mode -eq "full-with-secrets" -and -not $IUnderstandSecrets) {
     throw "Refusing full-with-secrets without -IUnderstandSecrets. This mode may package auth tokens, .env files, browser login state, and private keys."
 }
@@ -39,6 +41,31 @@ $SecretNames = @(
 )
 $SecretExtensions = @(".pem", ".key")
 $StandardSkipNames = @("logs", "Cache", "Caches", "GPUCache", "Code Cache", "CacheStorage")
+$ExcludeSummary = @(
+    "always_excluded=.DS_Store,.tmp,tmp,process_manager,vendor_imports,.git,node_modules,.venv,venv,__pycache__,Singleton runtime files,*.ipc,*.sock",
+    "standard_excluded=logs,logs_*.sqlite*,Cache,Caches,GPUCache,Code Cache,CacheStorage",
+    "secrets_excluded_unless_full_with_secrets=auth.json,Cookies,Login Data,Local Storage,Session Storage,.env,.env.*,private keys,*.pem,*.key"
+)
+
+function Write-Utf8NoBomLf {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines
+    )
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, (($Lines -join "`n") + "`n"), $encoding)
+}
+
+function Write-RawUtf8NoBomLf {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][string]$Text
+    )
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    $normalized = $Text -replace "`r`n", "`n" -replace "`r", "`n"
+    if (-not $normalized.EndsWith("`n")) { $normalized += "`n" }
+    [System.IO.File]::WriteAllText($Path, $normalized, $encoding)
+}
 
 function Should-Skip {
     param([System.IO.FileSystemInfo]$Item)
@@ -88,6 +115,63 @@ function Copy-IfDirectory {
     }
 }
 
+function Count-Files {
+    param([string]$Path, [string]$Filter = "*")
+    if (-not (Test-Path -LiteralPath $Path)) { return 0 }
+    return @(Get-ChildItem -LiteralPath $Path -Filter $Filter -Recurse -Force -File -ErrorAction SilentlyContinue).Count
+}
+
+function Count-ImmediateDirectories {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return 0 }
+    return @(Get-ChildItem -LiteralPath $Path -Directory -Force -ErrorAction SilentlyContinue).Count
+}
+
+function New-CrossPlatformZip {
+    param(
+        [Parameter(Mandatory=$true)][string]$SourceDirectory,
+        [Parameter(Mandatory=$true)][string]$DestinationZip
+    )
+
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    if (Test-Path -LiteralPath $DestinationZip) {
+        Remove-Item -LiteralPath $DestinationZip -Force
+    }
+
+    $sourceFull = (Resolve-Path -LiteralPath $SourceDirectory).Path
+    $parent = Split-Path -Parent $sourceFull
+    $safeDate = [DateTimeOffset](Get-Date "2020-01-01T00:00:00Z")
+    $archive = [System.IO.Compression.ZipFile]::Open($DestinationZip, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        Get-ChildItem -LiteralPath $sourceFull -Recurse -Force -Directory | ForEach-Object {
+            $entryName = $_.FullName.Substring($parent.Length + 1).Replace("\", "/") + "/"
+            $entry = $archive.CreateEntry($entryName)
+            $entry.LastWriteTime = $safeDate
+        }
+
+        Get-ChildItem -LiteralPath $sourceFull -Recurse -Force -File | ForEach-Object {
+            $entryName = $_.FullName.Substring($parent.Length + 1).Replace("\", "/")
+            $entry = $archive.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+            $entry.LastWriteTime = $safeDate
+            $inputStream = [System.IO.File]::OpenRead($_.FullName)
+            try {
+                $outputStream = $entry.Open()
+                try {
+                    $inputStream.CopyTo($outputStream)
+                } finally {
+                    $outputStream.Dispose()
+                }
+            } finally {
+                $inputStream.Dispose()
+            }
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
 Copy-IfDirectory (Join-Path $env:USERPROFILE ".codex") (Join-Path $Stage "home\.codex")
 Copy-IfDirectory (Join-Path $env:APPDATA "Codex") (Join-Path $Stage "appdata_roaming\Codex")
 Copy-IfDirectory (Join-Path $env:APPDATA "com.openai.codex") (Join-Path $Stage "appdata_roaming\com.openai.codex")
@@ -117,7 +201,7 @@ $sensitivePaths = @(
     (Join-Path $env:APPDATA "Codex\Session Storage")
 ) | Where-Object { Test-Path -LiteralPath $_ }
 
-@(
+Write-Utf8NoBomLf -Path $SensitiveReport -Lines @(
     "Sensitive files report"
     "Generated: $Stamp"
     "Mode: $Mode"
@@ -126,7 +210,7 @@ $sensitivePaths = @(
     "Contents are intentionally not printed."
     ""
     $sensitivePaths
-) | Set-Content -LiteralPath $SensitiveReport -Encoding UTF8
+)
 
 if ($Mode -ne "standard") {
     $envReport = Join-Path $Docs "ENV-INVENTORY.txt"
@@ -136,7 +220,7 @@ if ($Mode -ne "standard") {
             try { "${cmd}: $(& $cmd --version 2>$null | Select-Object -First 1)" } catch { "${cmd}: $($found.Source)" }
         }
     }
-    @(
+    Write-Utf8NoBomLf -Path $envReport -Lines @(
         "Environment inventory"
         "Generated: $Stamp"
         ""
@@ -147,7 +231,7 @@ if ($Mode -ne "standard") {
         ""
         "[tools]"
         $toolLines
-    ) | Set-Content -LiteralPath $envReport -Encoding UTF8
+    )
 }
 
 $readme = @"
@@ -167,15 +251,15 @@ Windows restore:
 Mac restore:
 1. Install Codex, open it once, then close it.
 2. Run in Terminal:
-   bash Restore-Codex-To-Mac.sh
+   bash Restore-Codex-To-Mac.sh --restore-projects
 3. Verify:
-   bash Verify-Codex-Mac-Restore.sh
+   bash Verify-Codex-Mac-Restore.sh --json
 
-Project folders, if included, are under projects\. Move them to your desired project location and reopen the folder in Codex.
+Project folders, if included, are under projects/. By default, the Mac restore script copies them to ~/Documents/Codex-Restored-Projects when --restore-projects is passed.
 
 By default this package excludes browser login state, auth.json, .env files, and private keys. If it was created with full-with-secrets, treat it like a password vault.
 "@
-$readme | Set-Content -LiteralPath (Join-Path $Stage "README-Restore.txt") -Encoding UTF8
+Write-RawUtf8NoBomLf -Path (Join-Path $Stage "README-Restore.txt") -Text $readme
 
 foreach ($pair in @(
     @("restore_codex_to_windows.ps1", "Restore-Codex-To-Windows.ps1"),
@@ -190,44 +274,64 @@ foreach ($pair in @(
     }
 }
 
+$codexHome = Join-Path $Stage "home\.codex"
+$projectsRoot = Join-Path $Stage "projects"
+$counts = [ordered]@{
+    sessions = Count-Files -Path (Join-Path $codexHome "sessions") -Filter "*.jsonl"
+    archived_sessions = Count-Files -Path (Join-Path $codexHome "archived_sessions") -Filter "*.jsonl"
+    skills = Count-Files -Path (Join-Path $codexHome "skills") -Filter "SKILL.md"
+    plugin_manifests = Count-Files -Path (Join-Path $codexHome "plugins\cache") -Filter "plugin.json"
+    generated_images = Count-Files -Path (Join-Path $codexHome "generated_images")
+    sqlite_files = Count-Files -Path $codexHome -Filter "*.sqlite"
+    projects = Count-ImmediateDirectories -Path $projectsRoot
+}
+
 $manifestText = @()
 $manifestText += "created_at=$Stamp"
 $manifestText += "source_os=Windows"
+$manifestText += "package_schema_version=$PackageSchemaVersion"
 $manifestText += "source_home=$env:USERPROFILE"
 $manifestText += "mode=$Mode"
 $manifestText += "package=$ZipPath"
 $manifestText += "projects=$($Project -join ' ')"
 $manifestText += ""
 $manifestText += "[counts]"
-$codexHome = Join-Path $Stage "home\.codex"
-$manifestText += "sessions=$(@(Get-ChildItem -LiteralPath (Join-Path $codexHome "sessions") -Filter "*.jsonl" -Recurse -Force -File -ErrorAction SilentlyContinue).Count)"
-$manifestText += "archived_sessions=$(@(Get-ChildItem -LiteralPath (Join-Path $codexHome "archived_sessions") -Filter "*.jsonl" -Recurse -Force -File -ErrorAction SilentlyContinue).Count)"
-$manifestText += "skills=$(@(Get-ChildItem -LiteralPath (Join-Path $codexHome "skills") -Filter "SKILL.md" -Recurse -Force -File -ErrorAction SilentlyContinue).Count)"
-$manifestText += "plugin_manifests=$(@(Get-ChildItem -LiteralPath (Join-Path $codexHome "plugins\cache") -Filter "plugin.json" -Recurse -Force -File -ErrorAction SilentlyContinue).Count)"
-$manifestText | Set-Content -LiteralPath (Join-Path $Stage "MANIFEST.txt") -Encoding UTF8
+foreach ($key in $counts.Keys) {
+    $manifestText += "$key=$($counts[$key])"
+}
+$manifestText += ""
+$manifestText += "[exclude_strategy]"
+$manifestText += $ExcludeSummary
+Write-Utf8NoBomLf -Path (Join-Path $Stage "MANIFEST.txt") -Lines $manifestText
 
-@{
+$manifestJson = [ordered]@{
     created_at = $Stamp
     source_os = "Windows"
+    package_schema_version = $PackageSchemaVersion
     source_home = $env:USERPROFILE
     mode = $Mode
     package = $ZipPath
     projects = $Project
+    counts = $counts
+    exclude_strategy = $ExcludeSummary
     notes = @(
         "Path mappings are recorded rather than applied to JSONL sessions in place.",
         "Use docs/SENSITIVE-FILES.txt to review suspected sensitive files without exposing values.",
         "Run the restore script for the target OS only after closing Codex on that target."
     )
-} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $Stage "MANIFEST.json") -Encoding UTF8
+}
+Write-RawUtf8NoBomLf -Path (Join-Path $Stage "MANIFEST.json") -Text ($manifestJson | ConvertTo-Json -Depth 8)
 
-Get-ChildItem -LiteralPath $Stage -Recurse -Force -File |
+$shaFile = Join-Path $Stage "SHA256SUMS.txt"
+$shaLines = Get-ChildItem -LiteralPath $Stage -Recurse -Force -File |
+    Where-Object { $_.FullName -ne $shaFile } |
     ForEach-Object {
-        $rel = Resolve-Path -LiteralPath $_.FullName -Relative
+        $rel = $_.FullName.Substring($Stage.Length + 1).Replace("\", "/")
         "$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower())  $rel"
-    } | Set-Content -LiteralPath (Join-Path $Stage "SHA256SUMS.txt") -Encoding UTF8
+    }
+Write-Utf8NoBomLf -Path $shaFile -Lines $shaLines
 
-if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
-Compress-Archive -LiteralPath $Stage -DestinationPath $ZipPath -Force
+New-CrossPlatformZip -SourceDirectory $Stage -DestinationZip $ZipPath
 
 Write-Host "Created: $ZipPath"
 Write-Host "Stage: $Stage"

@@ -218,13 +218,13 @@ Set-ExecutionPolicy -Scope Process Bypass
 5. 运行：
 
 ```bash
-bash ./Restore-Codex-To-Mac.sh
+bash ./Restore-Codex-To-Mac.sh --restore-projects
 ```
 
 然后运行验证：
 
 ```bash
-bash ./Verify-Codex-Mac-Restore.sh
+bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
 ## 路径对应关系
@@ -266,7 +266,7 @@ Windows 端主要数据：
 
 ### 可以 Windows 转 Mac、Windows 转 Windows、Mac 转 Mac 吗？
 
-可以。在源系统上用 `create_mac_codex_migration_package.sh` 或 `create_windows_codex_migration_package.ps1` 打包，然后在目标系统上用 `Restore-Codex-To-Mac.sh` 或 `Restore-Codex-To-Windows.ps1` 恢复。
+可以。在源系统上用 `create_mac_codex_migration_package.sh` 或 `create_windows_codex_migration_package.ps1` 打包，然后在目标系统上用 `Restore-Codex-To-Mac.sh --restore-projects` 或 `Restore-Codex-To-Windows.ps1` 恢复。
 
 ### 这个工具能迁移 Codex 对话和 sessions 吗？
 

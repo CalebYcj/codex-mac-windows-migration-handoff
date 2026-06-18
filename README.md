@@ -127,7 +127,7 @@ This skill can help package and restore:
 - environment inventory and path mapping
 - optional project folders needed to reopen old conversations
 
-Project folders are not automatically part of Codex data. Always decide whether to include them.
+Project folders are not automatically part of Codex data. Always decide whether to include them. On Mac restores, pass `--restore-projects` to copy packaged projects into `~/Documents/Codex-Restored-Projects`.
 
 ## Documentation
 
@@ -233,13 +233,13 @@ On Mac:
 5. Run:
 
 ```bash
-bash ./Restore-Codex-To-Mac.sh
+bash ./Restore-Codex-To-Mac.sh --restore-projects
 ```
 
 Then verify:
 
 ```bash
-bash ./Verify-Codex-Mac-Restore.sh
+bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
 ## Inventory Helpers
@@ -275,7 +275,7 @@ Run `scripts/create_mac_codex_migration_package.sh` on the Mac, transfer the gen
 
 ### Can this migrate Windows to Mac, Windows to Windows, or Mac to Mac?
 
-Yes. Package on the source OS with `create_mac_codex_migration_package.sh` or `create_windows_codex_migration_package.ps1`, then restore on the target OS with `Restore-Codex-To-Mac.sh` or `Restore-Codex-To-Windows.ps1`.
+Yes. Package on the source OS with `create_mac_codex_migration_package.sh` or `create_windows_codex_migration_package.ps1`, then restore on the target OS with `Restore-Codex-To-Mac.sh --restore-projects` or `Restore-Codex-To-Windows.ps1`.
 
 ### Can this migrate Codex conversations and sessions?
 

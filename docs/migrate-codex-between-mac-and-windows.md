@@ -63,9 +63,11 @@ Set-ExecutionPolicy -Scope Process Bypass
 Unzip the package, open Terminal inside the extracted folder, then run:
 
 ```bash
-bash ./Restore-Codex-To-Mac.sh
-bash ./Verify-Codex-Mac-Restore.sh
+bash ./Restore-Codex-To-Mac.sh --restore-projects
+bash ./Verify-Codex-Mac-Restore.sh --json
 ```
+
+By default, `--restore-projects` copies package projects into `~/Documents/Codex-Restored-Projects`. Use `--projects-dir <dir>` if you want a different project destination.
 
 ## What Gets Moved
 
@@ -78,6 +80,8 @@ It excludes browser cookies, Login Data, Local Storage, `.env` files, API keys, 
 Codex history and project files are separate. If the old conversations mention a local project, include that project folder with `--project` on Mac or `-Project` on Windows.
 
 Do not bulk rewrite old JSONL session files just to change old absolute paths. Keep the history intact, record the mapping in the package manifest, and reopen the project folder from the new path on the target computer.
+
+Windows-generated packages are Mac-friendly: zip entries use forward slashes, `SHA256SUMS.txt` uses LF with no BOM, and both `MANIFEST.txt` and `MANIFEST.json` include source OS, schema version, mode, counts, and exclusion strategy.
 
 ## Login State
 

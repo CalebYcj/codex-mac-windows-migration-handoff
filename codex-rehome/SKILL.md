@@ -52,16 +52,16 @@ Do not treat the skill as only a script. Use the instructions to decide mode, sa
 
 5. On the target computer, unzip and run the restore script for that OS.
    - Windows target: run `Restore-Codex-To-Windows.ps1`. If execution policy blocks it, run `Set-ExecutionPolicy -Scope Process Bypass` in the same PowerShell session.
-   - Mac target: run `bash Restore-Codex-To-Mac.sh`.
+   - Mac target: run `bash Restore-Codex-To-Mac.sh --restore-projects` when the package includes project folders. Use `--projects-dir <dir>` to choose a custom project destination; otherwise projects restore to `~/Documents/Codex-Restored-Projects`.
    - Restore scripts back up existing target directories before copying.
    - If Codex fails to start, close Codex and delete stale `SingletonLock`, `SingletonCookie`, and `SingletonSocket` under the target Codex app support directory.
 
 6. Verify continuity.
    - Open Codex and check recent threads, skills, plugins, memories, generated images, and automations.
    - Windows target: run `scripts/verify_windows_codex_restore.ps1` or the package copy `Verify-Codex-Windows-Restore.ps1`.
-   - Mac target: run `scripts/verify_mac_codex_restore.sh` or the package copy `Verify-Codex-Mac-Restore.sh`.
+   - Mac target: run `scripts/verify_mac_codex_restore.sh --json` or the package copy `Verify-Codex-Mac-Restore.sh --json`.
    - Reopen the project folder from its new target location if old conversations reference source paths like `/Users/<name>/...` or `C:\Users\<name>\...`.
-   - If a project was included in the package, move it from `projects/` to the desired target project folder and update/reopen the workspace in Codex.
+   - If project folders were restored, reopen them from `~/Documents/Codex-Restored-Projects` or the custom `--projects-dir`.
 
 ## Known Source Findings
 
@@ -82,20 +82,22 @@ Real Mac source validation found this useful shape:
 ## Feature Notes
 
 - All directions use the same neutral package layout with target-specific restore scripts.
+- Windows packages use schema version 2, forward-slash zip entries, LF/no-BOM checksums, `MANIFEST.txt`, and `MANIFEST.json` so macOS can unzip and verify them directly.
 - Always run the target verifier before telling the user migration is complete.
-- Mac restore scripts may prompt if any Codex process is running; ask the user to close Codex before restoring.
-- Project folders are packaged under `projects/` but are intentionally not auto-moved into the target home; tell the user to move or reopen them manually.
+- Mac restore normalizes package permissions, fails if `home/.codex` is missing, and can restore project folders with `--restore-projects`.
+- Mac restore scripts may prompt if any Codex process is running during a real restore; isolated `/tmp/codex-*` test restores continue without blocking.
+- Project folders are packaged under `projects/`. On Mac, `--restore-projects` copies them to `~/Documents/Codex-Restored-Projects` by default.
 
 ## Scripts
 
 - `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a neutral migration zip with Windows/Mac restore scripts, README, manifest, checksums, and optional project folders.
-- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a neutral migration zip with Windows/Mac restore scripts, README, manifest, checksums, and optional project folders.
+- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a Mac-friendly neutral migration zip with forward-slash entries, LF/no-BOM `SHA256SUMS.txt`, Windows/Mac restore scripts, README, manifests, checksums, and optional project folders.
 - `scripts/restore_codex_to_windows.ps1`: Standalone Windows restore script. Packages also embed a copy named `Restore-Codex-To-Windows.ps1`.
 - `scripts/restore_codex_to_mac.sh`: Standalone Mac restore script. Packages also embed a copy named `Restore-Codex-To-Mac.sh`.
 - `scripts/collect_windows_codex_inventory.ps1`: Run on Windows before or after restore to summarize existing Codex data locations, sizes, and project folder candidates.
 - `scripts/collect_mac_codex_inventory.sh`: Run on Mac before or after restore to summarize existing Codex data locations, sizes, and project folder candidates.
 - `scripts/verify_windows_codex_restore.ps1`: Run on Windows after restore to verify restored paths, counts, package metadata, and project candidates.
-- `scripts/verify_mac_codex_restore.sh`: Run on Mac after restore to verify restored paths, counts, package metadata, and project candidates.
+- `scripts/verify_mac_codex_restore.sh`: Run on Mac after restore to verify restored paths, checksums, selected chats, forbidden-file counts, and restored project folders.
 
 ## Handoff Checklist
 
