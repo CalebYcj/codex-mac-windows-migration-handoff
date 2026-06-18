@@ -23,7 +23,7 @@ Do not treat UI project recovery as a manual JSON/SQLite patching problem. On Ma
 /Applications/Codex.app/Contents/Resources/codex app <restored-project-path>
 ```
 
-Windows is expected to need the same class of official open-workspace operation, such as `codex app <restored-project-path>` or the equivalent Codex Desktop mechanism.
+Windows needs the same class of official open-workspace operation. The Windows restore script now attempts `codex app <restored-project-path>` after `-RestoreProjects`; if packaged-app permissions block that CLI call, reopen the restored folder from Codex Desktop and rerun the verifier.
 
 ## Plain User Flow
 
@@ -243,15 +243,15 @@ On Windows:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\Restore-Codex-To-Windows.ps1
+.\Restore-Codex-To-Windows.ps1 -RestoreProjects
 ```
 
-The restore script backs up existing Windows Codex data, then merges migrated data into the target. It preserves target `auth.json`, `config.toml`, `installation_id`, `models_cache.json`, and `chrome-native-hosts-v2.json`. Use `-ReplaceCodexHome` only when you intentionally want a destructive full replacement, and `-ReplaceState` only when you want to overwrite existing state/memory/goal databases.
+The restore script backs up existing Windows Codex data, restores packaged project folders to `%USERPROFILE%\Documents\Codex-Restored-Projects` by default, imports schema v3 UI-ready metadata when present, and then merges migrated data into the target. It preserves target `auth.json`, `config.toml`, `installation_id`, `models_cache.json`, and `chrome-native-hosts-v2.json`. Use `-ProjectsDir <dir>` to choose a custom project destination, `-ReplaceCodexHome` only when you intentionally want a destructive full replacement, and `-ReplaceState` only when you want to overwrite existing state/memory/goal databases.
 
 Then verify:
 
 ```powershell
-.\Verify-Codex-Windows-Restore.ps1
+.\Verify-Codex-Windows-Restore.ps1 -Json
 ```
 
 ## Restore On Mac
@@ -274,7 +274,7 @@ Then verify:
 bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
-The Mac verifier reports file-level restore plus schema v3 UI-ready data layers. For selected chats, readiness requires session files, `session_index.jsonl`, `state_*.sqlite.threads`, existing `rollout_path`, Mac `cwd` path mapping, remapped session JSONL metadata, no old source path left in selected JSONL files, and restored project paths in `.codex-global-state.json`.
+The Mac and Windows verifiers report file-level restore plus schema v3 UI-ready data layers when the package contains that metadata. For selected chats, readiness requires session files, `session_index.jsonl`, `state_*.sqlite.threads`, existing `rollout_path`, target `cwd` path mapping, remapped session JSONL metadata, no old source path left in selected JSONL files, and restored project paths in `.codex-global-state.json`.
 
 ## Inventory Helpers
 
@@ -299,7 +299,7 @@ These inventory scripts report Codex data folders, approximate sizes, and likely
 - Do not restore browser cookies, Login Data, Local Storage, `.env`, API keys, or private keys by default.
 - Restore scripts merge by default. Do not use `--replace-codex-home` / `-ReplaceCodexHome` unless the user explicitly accepts overwriting the target Codex home.
 - Do not overwrite `state_*.sqlite`, `memories_*.sqlite`, or `goals_*.sqlite` by default. Use `--replace-state` / `-ReplaceState` only when replacing target state is intentional.
-- Schema v3 restores prepare UI-ready project/thread data and, on Mac, invoke `codex app <restored-project-path>` for project registration. If the verifier reports `app_project_registration_ready=false`, run that command manually for each restored project path.
+- Schema v3 restores prepare UI-ready project/thread data and invoke or attempt `codex app <restored-project-path>` for project registration. If the verifier reports `app_project_registration_ready=false`, run that command manually for each restored project path, or reopen the restored project folder from Codex Desktop.
 - After a cross-OS restore, old absolute paths in previous conversations may not resolve. Reopen the matching project folder from its new target path.
 - If the Windows app fails to start after restore, remove stale `SingletonLock`, `SingletonCookie`, and `SingletonSocket` files under `%APPDATA%\Codex`.
 - If login state does not transfer, ask the user to log in again. This is expected.
@@ -308,11 +308,11 @@ These inventory scripts report Codex data folders, approximate sizes, and likely
 
 ### How do I migrate OpenAI Codex Desktop from Mac to Windows?
 
-Run `scripts/create_mac_codex_migration_package.sh` on the Mac, transfer the generated zip to Windows, close Codex on Windows, run `Restore-Codex-To-Windows.ps1`, then run `Verify-Codex-Windows-Restore.ps1`.
+Run `scripts/create_mac_codex_migration_package.sh` on the Mac, transfer the generated zip to Windows, close Codex on Windows, run `Restore-Codex-To-Windows.ps1 -RestoreProjects`, then run `Verify-Codex-Windows-Restore.ps1 -Json`.
 
 ### Can this migrate Windows to Mac, Windows to Windows, or Mac to Mac?
 
-Yes. Package on the source OS with `create_mac_codex_migration_package.sh` or `create_windows_codex_migration_package.ps1`, then restore on the target OS with `Restore-Codex-To-Mac.sh --restore-projects` or `Restore-Codex-To-Windows.ps1`.
+Yes. Package on the source OS with `create_mac_codex_migration_package.sh` or `create_windows_codex_migration_package.ps1`, then restore on the target OS with `Restore-Codex-To-Mac.sh --restore-projects` or `Restore-Codex-To-Windows.ps1 -RestoreProjects`.
 
 ### Can this migrate Codex conversations and sessions?
 

@@ -654,9 +654,9 @@ Windows restore:
 1. Install Codex, open it once, then close it.
 2. Run in PowerShell:
    Set-ExecutionPolicy -Scope Process Bypass
-   .\Restore-Codex-To-Windows.ps1
+   .\Restore-Codex-To-Windows.ps1 -RestoreProjects
 3. Verify:
-   .\Verify-Codex-Windows-Restore.ps1
+   .\Verify-Codex-Windows-Restore.ps1 -Json
 
 Mac restore:
 1. Install Codex, open it once, then close it.
@@ -665,12 +665,15 @@ Mac restore:
 3. Verify:
    bash Verify-Codex-Mac-Restore.sh --json
 
-Project folders, if included, are under projects/. By default, the Mac restore script copies them to ~/Documents/Codex-Restored-Projects when --restore-projects is passed.
+Project folders, if included, are under projects/. By default, the Windows restore script copies them to %USERPROFILE%\Documents\Codex-Restored-Projects when -RestoreProjects is passed. The Mac restore script copies them to ~/Documents/Codex-Restored-Projects when --restore-projects is passed.
 
 For Mac restores with projects, the restore script invokes:
   /Applications/Codex.app/Contents/Resources/codex app <restored-project-path>
 
-This official Codex Desktop entry point registers/opens restored projects in the app-visible project list. Hand-editing .codex-global-state.json alone is not enough, because a running Codex Desktop process can overwrite that file on quit.
+For Windows restores with projects, the restore script attempts:
+  codex app <restored-project-path>
+
+This official Codex Desktop entry point registers/opens restored projects in the app-visible project list. Hand-editing .codex-global-state.json alone is not enough, because a running Codex Desktop process can overwrite that file on quit. If Windows packaged-app permissions block the CLI call, reopen the restored folder from Codex Desktop and rerun the verifier.
 
 Selected chat files, if included, are under selected_chats/. They are duplicated there for inspection and should also appear in home/.codex/sessions when restored.
 

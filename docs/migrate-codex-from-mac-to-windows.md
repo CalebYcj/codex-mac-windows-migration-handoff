@@ -52,13 +52,13 @@ On Windows:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\Restore-Codex-To-Windows.ps1
+.\Restore-Codex-To-Windows.ps1 -RestoreProjects
 ```
 
 Then verify:
 
 ```powershell
-.\Verify-Codex-Windows-Restore.ps1
+.\Verify-Codex-Windows-Restore.ps1 -Json
 ```
 
 ## Standard Mode Safety

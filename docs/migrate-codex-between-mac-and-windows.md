@@ -11,7 +11,7 @@ The basic flow is always the same:
 5. Close Codex on the target computer.
 6. Restore with the target OS script.
 7. Verify the restore.
-8. Reopen project folders from their new target paths.
+8. Confirm project folders are visible from their new target paths.
 
 ## Choose Your Direction
 
@@ -63,9 +63,11 @@ Unzip the package, open PowerShell inside the extracted folder, then run:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\Restore-Codex-To-Windows.ps1
-.\Verify-Codex-Windows-Restore.ps1
+.\Restore-Codex-To-Windows.ps1 -RestoreProjects
+.\Verify-Codex-Windows-Restore.ps1 -Json
 ```
+
+By default, `-RestoreProjects` copies package projects into `%USERPROFILE%\Documents\Codex-Restored-Projects`. Use `-ProjectsDir <dir>` if you want a different project destination.
 
 ## Restore To Mac
 
@@ -88,11 +90,11 @@ It excludes browser cookies, Login Data, Local Storage, `.env` files, API keys, 
 
 Codex history and project files are separate. If the old conversations mention a local project, include that project folder with `--project` on Mac or `-Project` on Windows.
 
-Do not bulk rewrite old JSONL session files just to change old absolute paths. Keep the history intact, record the mapping in the package manifest, and reopen the project folder from the new path on the target computer.
+Do not bulk rewrite old JSONL session files by hand. Keep the history intact, let the target restore script apply schema v3 path mappings for selected restored conversations, and use Codex Desktop's own project-open path to register the restored workspace.
 
 Windows-generated packages are Mac-friendly: zip entries use forward slashes, `SHA256SUMS.txt` uses LF with no BOM, and both `MANIFEST.txt` and `MANIFEST.json` include source OS, schema version, mode, counts, and exclusion strategy.
 
-If `selected_chats/` is present, the Mac verifier reports both the selected chat count and whether those chats also appear in restored `.codex/sessions`.
+If `selected_chats/` is present, the Mac and Windows verifiers report the selected chat count and whether those chats also appear in restored `.codex/sessions`, `session_index.jsonl`, and `state_*.sqlite.threads`.
 
 ## Login State
 

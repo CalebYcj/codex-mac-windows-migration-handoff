@@ -268,16 +268,16 @@ Windows restore:
 1. Open PowerShell in the unzipped folder.
 2. Run:
    Set-ExecutionPolicy -Scope Process Bypass
-   .\Restore-Codex-To-Windows.ps1
+   .\Restore-Codex-To-Windows.ps1 -RestoreProjects
 3. Verify:
-   .\Verify-Codex-Windows-Restore.ps1
+   .\Verify-Codex-Windows-Restore.ps1 -Json
 
 Mac restore:
 1. Open Terminal in the unzipped folder.
 2. Run:
-   bash Restore-Codex-To-Mac.sh
+   bash Restore-Codex-To-Mac.sh --restore-projects
 3. Verify:
-   bash Verify-Codex-Mac-Restore.sh
+   bash Verify-Codex-Mac-Restore.sh --json
 
 Manual mapping:
 home\.codex -> C:\Users\<you>\.codex
@@ -290,11 +290,15 @@ appdata_roaming/Codex -> ~/Library/Application Support/Codex
 appdata_roaming/com.openai.codex -> ~/Library/Application Support/com.openai.codex
 appdata_roaming/OpenAI/Codex -> ~/Library/Application Support/OpenAI/Codex
 
-Project folders, if included, are under projects/. On Mac, Restore-Codex-To-Mac.sh --restore-projects copies them to ~/Documents/Codex-Restored-Projects by default and invokes:
+Project folders, if included, are under projects/. On Windows, Restore-Codex-To-Windows.ps1 -RestoreProjects copies them to %USERPROFILE%\Documents\Codex-Restored-Projects by default and attempts:
+
+  codex app <restored-project-path>
+
+On Mac, Restore-Codex-To-Mac.sh --restore-projects copies them to ~/Documents/Codex-Restored-Projects by default and invokes:
 
   /Applications/Codex.app/Contents/Resources/codex app <restored-project-path>
 
-This official Codex Desktop entry point registers/opens restored projects in the app-visible project list. Hand-editing .codex-global-state.json alone is not enough, because a running Codex Desktop process can overwrite that file on quit.
+This official Codex Desktop entry point registers/opens restored projects in the app-visible project list. Hand-editing .codex-global-state.json alone is not enough, because a running Codex Desktop process can overwrite that file on quit. If Windows packaged-app permissions block the CLI call, reopen the restored folder from Codex Desktop and rerun the verifier.
 
 If Codex asks you to log in again, log in normally.
 

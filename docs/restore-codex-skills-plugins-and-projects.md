@@ -15,7 +15,7 @@ The generated package uses neutral folder names so the same package can be resto
 | `appdata_roaming/com.openai.codex` | `%APPDATA%\com.openai.codex` | `~/Library/Application Support/com.openai.codex` |
 | `appdata_roaming/OpenAI/Codex` | `%APPDATA%\OpenAI\Codex` | `~/Library/Application Support/OpenAI/Codex` |
 
-Project folders are included under `projects/` in the migration package. On Mac, pass `--restore-projects` to copy them into `~/Documents/Codex-Restored-Projects` by default, or pass `--projects-dir <dir>` to choose another location. On Windows, move or copy them to the desired project location, then reopen that folder from Codex.
+Project folders are included under `projects/` in the migration package. On Mac, pass `--restore-projects` to copy them into `~/Documents/Codex-Restored-Projects` by default, or pass `--projects-dir <dir>` to choose another location. On Windows, pass `-RestoreProjects` to copy them into `%USERPROFILE%\Documents\Codex-Restored-Projects` by default, or pass `-ProjectsDir <dir>` to choose another location.
 
 ## Restore To Windows
 
@@ -23,8 +23,8 @@ After unzipping the package and closing Codex:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\Restore-Codex-To-Windows.ps1
-.\Verify-Codex-Windows-Restore.ps1
+.\Restore-Codex-To-Windows.ps1 -RestoreProjects
+.\Verify-Codex-Windows-Restore.ps1 -Json
 ```
 
 ## Restore To Mac
@@ -53,4 +53,4 @@ Old conversations may reference source-computer paths like:
 C:\Users\Administrator\Documents\New project
 ```
 
-On the target computer, reopen the matching project folder from its new location. Do not bulk-edit JSONL session files in place. Prefer restoring files first, reopening the target project folder, and letting Codex rebuild or map workspace context safely.
+On the target computer, restore the matching project folder from its new location and let the restore script consume schema v3 metadata when present. Windows and Mac target scripts now rewrite selected restored session metadata, merge selected thread rows into `state_*.sqlite`, update project registry hints, and attempt app-visible project registration through `codex app <restored-project-path>`. If the Windows packaged app blocks CLI execution, the verifier reports app registration as incomplete; manually reopen that restored project folder from Codex Desktop.
