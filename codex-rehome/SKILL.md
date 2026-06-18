@@ -44,6 +44,7 @@ Do not treat the skill as only a script. Use the instructions to decide mode, sa
    - Best practice: install/open Codex once on the target computer, then close Codex before restoring.
    - For the cleanest package, run the packaging script after closing Codex. If running from inside Codex, tell the user that active SQLite/log files can change while copying; verify package size and rerun if needed.
    - Include optional project folders with repeated `--project /path/to/project` arguments.
+   - On Windows, include highlighted chat/session JSONL files for audit with repeated `-SelectedChat <path>` arguments. These files are copied to `selected_chats/` and should also exist in the normal restored session tree.
    - Use the script's default exclusions for runtime/cache/dev files such as `.tmp`, `process_manager`, `vendor_imports`, `.git`, `node_modules`, `.venv`, sockets, and browser login databases. These exclusions are necessary because real Mac packages can fail on socket files and unreadable Git/cache objects.
 
 4. Transfer the generated `.zip`.
@@ -83,6 +84,7 @@ Real Mac source validation found this useful shape:
 
 - All directions use the same neutral package layout with target-specific restore scripts.
 - Windows packages use schema version 2, forward-slash zip entries, LF/no-BOM checksums, `MANIFEST.txt`, and `MANIFEST.json` so macOS can unzip and verify them directly.
+- Windows packages can include `selected_chats/` via `-SelectedChat`; Mac verification reports both selected chat count and whether those chats match restored sessions.
 - Always run the target verifier before telling the user migration is complete.
 - Mac restore normalizes package permissions, fails if `home/.codex` is missing, and can restore project folders with `--restore-projects`.
 - Mac restore scripts may prompt if any Codex process is running during a real restore; isolated `/tmp/codex-*` test restores continue without blocking.
@@ -91,7 +93,7 @@ Real Mac source validation found this useful shape:
 ## Scripts
 
 - `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a neutral migration zip with Windows/Mac restore scripts, README, manifest, checksums, and optional project folders.
-- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a Mac-friendly neutral migration zip with forward-slash entries, LF/no-BOM `SHA256SUMS.txt`, Windows/Mac restore scripts, README, manifests, checksums, and optional project folders.
+- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a Mac-friendly neutral migration zip with forward-slash entries, LF/no-BOM `SHA256SUMS.txt`, Windows/Mac restore scripts, README, manifests, checksums, optional project folders, and optional selected chat files.
 - `scripts/restore_codex_to_windows.ps1`: Standalone Windows restore script. Packages also embed a copy named `Restore-Codex-To-Windows.ps1`.
 - `scripts/restore_codex_to_mac.sh`: Standalone Mac restore script. Packages also embed a copy named `Restore-Codex-To-Mac.sh`.
 - `scripts/collect_windows_codex_inventory.ps1`: Run on Windows before or after restore to summarize existing Codex data locations, sizes, and project folder candidates.

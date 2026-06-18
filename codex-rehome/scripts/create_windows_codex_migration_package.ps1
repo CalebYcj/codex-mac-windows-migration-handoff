@@ -3,6 +3,7 @@ param(
     [string]$Mode = "standard",
     [string]$Out = (Join-Path $env:USERPROFILE "Desktop"),
     [string[]]$Project = @(),
+    [string[]]$SelectedChat = @(),
     [switch]$IUnderstandSecrets
 )
 
@@ -26,6 +27,7 @@ New-Item -ItemType Directory -Force -Path `
     (Join-Path $Stage "appdata_local"), `
     (Join-Path $Stage "mac_only\Library\Preferences"), `
     (Join-Path $Stage "projects"), `
+    (Join-Path $Stage "selected_chats"), `
     $Docs | Out-Null
 
 $AlwaysSkipNames = @(
@@ -192,6 +194,14 @@ foreach ($projectPath in $Project) {
     }
 }
 
+foreach ($chatPath in $SelectedChat) {
+    if (Test-Path -LiteralPath $chatPath -PathType Leaf) {
+        Copy-Item -LiteralPath $chatPath -Destination (Join-Path $Stage "selected_chats\$(Split-Path -Leaf $chatPath)") -Force
+    } else {
+        Write-Warning "Missing selected chat: $chatPath"
+    }
+}
+
 $SensitiveReport = Join-Path $Docs "SENSITIVE-FILES.txt"
 $sensitivePaths = @(
     (Join-Path $env:USERPROFILE ".codex\auth.json"),
@@ -257,6 +267,8 @@ Mac restore:
 
 Project folders, if included, are under projects/. By default, the Mac restore script copies them to ~/Documents/Codex-Restored-Projects when --restore-projects is passed.
 
+Selected chat files, if included, are under selected_chats/. They are duplicated there for inspection and should also appear in home/.codex/sessions when restored.
+
 By default this package excludes browser login state, auth.json, .env files, and private keys. If it was created with full-with-secrets, treat it like a password vault.
 "@
 Write-RawUtf8NoBomLf -Path (Join-Path $Stage "README-Restore.txt") -Text $readme
@@ -284,6 +296,7 @@ $counts = [ordered]@{
     generated_images = Count-Files -Path (Join-Path $codexHome "generated_images")
     sqlite_files = Count-Files -Path $codexHome -Filter "*.sqlite"
     projects = Count-ImmediateDirectories -Path $projectsRoot
+    selected_chats = Count-Files -Path (Join-Path $Stage "selected_chats") -Filter "*.jsonl"
 }
 
 $manifestText = @()
@@ -294,6 +307,7 @@ $manifestText += "source_home=$env:USERPROFILE"
 $manifestText += "mode=$Mode"
 $manifestText += "package=$ZipPath"
 $manifestText += "projects=$($Project -join ' ')"
+$manifestText += "selected_chats=$($SelectedChat -join ' ')"
 $manifestText += ""
 $manifestText += "[counts]"
 foreach ($key in $counts.Keys) {
@@ -312,6 +326,7 @@ $manifestJson = [ordered]@{
     mode = $Mode
     package = $ZipPath
     projects = $Project
+    selected_chats = $SelectedChat
     counts = $counts
     exclude_strategy = $ExcludeSummary
     notes = @(

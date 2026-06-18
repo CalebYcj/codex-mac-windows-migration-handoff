@@ -48,6 +48,15 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 The generated package is written to the Windows Desktop by default.
 
+For an acceptance package that highlights specific conversations, pass selected session JSONL files:
+
+```powershell
+.\codex-rehome\scripts\create_windows_codex_migration_package.ps1 `
+  -Mode standard `
+  -Project "$env:USERPROFILE\Documents\New project" `
+  -SelectedChat "$env:USERPROFILE\.codex\sessions\2026\06\18\rollout-example.jsonl"
+```
+
 ## Restore To Windows
 
 Unzip the package, open PowerShell inside the extracted folder, then run:
@@ -82,6 +91,8 @@ Codex history and project files are separate. If the old conversations mention a
 Do not bulk rewrite old JSONL session files just to change old absolute paths. Keep the history intact, record the mapping in the package manifest, and reopen the project folder from the new path on the target computer.
 
 Windows-generated packages are Mac-friendly: zip entries use forward slashes, `SHA256SUMS.txt` uses LF with no BOM, and both `MANIFEST.txt` and `MANIFEST.json` include source OS, schema version, mode, counts, and exclusion strategy.
+
+If `selected_chats/` is present, the Mac verifier reports both the selected chat count and whether those chats also appear in restored `.codex/sessions`.
 
 ## Login State
 
