@@ -246,7 +246,7 @@ Then verify:
 bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
-The Mac verifier reports both file-level restore and sidebar readiness. For selected chats, readiness requires the chat to exist under `~/.codex/sessions` and in `~/.codex/session_index.jsonl`.
+The Mac verifier reports file-level restore plus schema v3 UI-ready data layers. For selected chats, readiness requires session files, `session_index.jsonl`, `state_*.sqlite.threads`, existing `rollout_path`, Mac `cwd` path mapping, remapped session JSONL metadata, no old source path left in selected JSONL files, and restored project paths in `.codex-global-state.json`.
 
 ## Inventory Helpers
 
@@ -271,6 +271,7 @@ These inventory scripts report Codex data folders, approximate sizes, and likely
 - Do not restore browser cookies, Login Data, Local Storage, `.env`, API keys, or private keys by default.
 - Restore scripts merge by default. Do not use `--replace-codex-home` / `-ReplaceCodexHome` unless the user explicitly accepts overwriting the target Codex home.
 - Do not overwrite `state_*.sqlite`, `memories_*.sqlite`, or `goals_*.sqlite` by default. Use `--replace-state` / `-ReplaceState` only when replacing target state is intentional.
+- Schema v3 restores can prepare UI-ready project/thread data, but app-visible sidebar readiness must be judged after closing and reopening Codex Desktop.
 - After a cross-OS restore, old absolute paths in previous conversations may not resolve. Reopen the matching project folder from its new target path.
 - If the Windows app fails to start after restore, remove stale `SingletonLock`, `SingletonCookie`, and `SingletonSocket` files under `%APPDATA%\Codex`.
 - If login state does not transfer, ask the user to log in again. This is expected.

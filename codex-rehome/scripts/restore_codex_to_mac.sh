@@ -373,7 +373,262 @@ restore_projects() {
     exit 1
   fi
   echo "Restored project folders to: $PROJECTS_DIR"
-  echo "Project UI registration is not automatic; reopen the restored project folder in Codex."
+  echo "Project files restored. Schema v3 metadata import will register project paths when metadata is present."
+}
+
+import_ui_ready_metadata() {
+  local metadata_dir="$ROOT/metadata"
+  [[ -d "$metadata_dir" ]] || { echo "No schema v3 metadata/ directory found; skipping UI-ready metadata import."; return; }
+  local py
+  if ! py="$(find_python3)"; then
+    echo "python3 is unavailable; skipping UI-ready metadata import." >&2
+    return
+  fi
+  "$py" - "$ROOT" "$DST_CODEX_HOME" "$PROJECTS_DIR" "$STAMP" <<'PY'
+import json
+import os
+import shutil
+import sqlite3
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+codex_home = Path(sys.argv[2])
+projects_dir = Path(sys.argv[3]).expanduser()
+stamp = sys.argv[4]
+metadata = root / "metadata"
+
+def read_json(path, default):
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8", errors="ignore"))
+    except Exception:
+        pass
+    return default
+
+path_map = read_json(metadata / "path_map.json", {"projects": []})
+thread_export = read_json(metadata / "thread_index_export.json", {"threads": [], "selected_thread_ids": []})
+registry_export = read_json(metadata / "project_ui_registry_export.json", {"project_registry": {}})
+
+def target_for_project(entry):
+    name = entry.get("package_project_name") or Path(entry.get("source_path", "")).name
+    target = projects_dir / name
+    return str(target)
+
+path_pairs = []
+target_projects = []
+for entry in path_map.get("projects", []):
+    target = target_for_project(entry)
+    target_projects.append(target)
+    for src in entry.get("source_path_variants") or []:
+        if src:
+            path_pairs.append((src, target))
+    src = entry.get("source_path")
+    if src:
+        path_pairs.append((src, target))
+        if not src.startswith("\\\\?\\"):
+            path_pairs.append(("\\\\?\\" + src, target))
+        path_pairs.append((src.replace("\\", "/"), target))
+        path_pairs.append(("/" + src, target))
+
+def map_path(value):
+    if value is None:
+        return value
+    s = str(value)
+    for old, new in path_pairs:
+        if old and old in s:
+            s = s.replace(old, new)
+    return s
+
+def selected_or_exported_ids():
+    ids = []
+    for tid in thread_export.get("selected_thread_ids", []) or []:
+        if tid and tid not in ids:
+            ids.append(str(tid))
+    for row in thread_export.get("threads", []) or []:
+        tid = row.get("id")
+        if tid and tid not in ids:
+            ids.append(str(tid))
+    return ids
+
+def find_session_file(thread_id):
+    sessions = codex_home / "sessions"
+    if not sessions.exists():
+        return None
+    matches = list(sessions.rglob(f"*{thread_id}*.jsonl"))
+    if matches:
+        return matches[0]
+    return None
+
+def rewrite_jsonl_paths():
+    changed = 0
+    for tid in selected_or_exported_ids():
+        path = find_session_file(tid)
+        if not path or not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        new_text = text
+        for old, new in path_pairs:
+            if old:
+                new_text = new_text.replace(old, new)
+                new_text = new_text.replace(old.replace("\\", "\\\\"), new)
+        if new_text != text:
+            backup = path.with_name(path.name + f".backup-pathmap-{stamp}")
+            if not backup.exists():
+                shutil.copy2(path, backup)
+            path.write_text(new_text, encoding="utf-8", newline="\n")
+            changed += 1
+    return changed
+
+def newest_state_db():
+    dbs = sorted(codex_home.glob("state_*.sqlite"), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+    return dbs[0] if dbs else None
+
+def merge_sqlite_threads():
+    db = newest_state_db()
+    rows = thread_export.get("threads", []) or []
+    if not db or not rows:
+        return 0
+    backup = db.with_name(db.name + f".backup-thread-import-{stamp}")
+    if not backup.exists():
+        shutil.copy2(db, backup)
+    con = sqlite3.connect(str(db))
+    con.row_factory = sqlite3.Row
+    cols = [r[1] for r in con.execute("pragma table_info(threads)").fetchall()]
+    if not cols:
+        con.close()
+        return 0
+    required_defaults = {
+        "rollout_path": "",
+        "created_at": 0,
+        "updated_at": 0,
+        "source": "vscode",
+        "model_provider": "openai",
+        "cwd": "",
+        "title": "",
+        "sandbox_policy": "{}",
+        "approval_mode": "on-request",
+        "tokens_used": 0,
+        "has_user_event": 0,
+        "archived": 0,
+        "cli_version": "",
+        "first_user_message": "",
+        "memory_mode": "enabled",
+        "preview": "",
+    }
+    imported = 0
+    for row in rows:
+        tid = row.get("id")
+        if not tid:
+            continue
+        d = dict(row)
+        cwd = map_path(d.get("cwd") or "")
+        if cwd:
+            d["cwd"] = cwd
+        session_file = find_session_file(str(tid))
+        if session_file:
+            d["rollout_path"] = str(session_file)
+        elif d.get("rollout_path"):
+            d["rollout_path"] = map_path(d.get("rollout_path"))
+        for key in ["sandbox_policy", "git_origin_url", "agent_path"]:
+            if d.get(key):
+                d[key] = map_path(d[key])
+        existing = con.execute("select * from threads where id=?", (tid,)).fetchone()
+        values = {}
+        for col in cols:
+            if col == "id":
+                values[col] = tid
+            elif col in d and d[col] is not None:
+                values[col] = d[col]
+            elif existing is not None:
+                values[col] = existing[col]
+            else:
+                values[col] = required_defaults.get(col)
+        if existing is None:
+            insert_cols = [c for c in cols if values.get(c) is not None]
+            placeholders = ",".join(["?"] * len(insert_cols))
+            con.execute(
+                f"insert into threads ({','.join(insert_cols)}) values ({placeholders})",
+                [values[c] for c in insert_cols],
+            )
+        else:
+            update_cols = [c for c in cols if c != "id" and values.get(c) is not None]
+            con.execute(
+                f"update threads set {','.join([c + '=?' for c in update_cols])} where id=?",
+                [values[c] for c in update_cols] + [tid],
+            )
+        imported += 1
+    con.commit()
+    con.close()
+    return imported
+
+def merge_global_state():
+    state_path = codex_home / ".codex-global-state.json"
+    if state_path.exists():
+        try:
+            data = json.loads(state_path.read_text(encoding="utf-8", errors="ignore"))
+        except Exception:
+            data = {}
+    else:
+        data = {}
+    backup = state_path.with_name(state_path.name + f".backup-ui-registry-{stamp}")
+    if state_path.exists() and not backup.exists():
+        shutil.copy2(state_path, backup)
+    for key in ["electron-saved-workspace-roots", "project-order", "active-workspace-roots"]:
+        arr = data.get(key)
+        if not isinstance(arr, list):
+            arr = []
+        for target in target_projects:
+            if target and target not in arr:
+                arr.append(target)
+        data[key] = arr
+    hints = data.get("thread-workspace-root-hints")
+    if not isinstance(hints, dict):
+        hints = {}
+    for row in thread_export.get("threads", []) or []:
+        tid = row.get("id")
+        cwd = map_path(row.get("cwd") or "")
+        if tid and cwd:
+            hints[str(tid)] = cwd
+    exported_hints = (registry_export.get("project_registry", {}) or {}).get("thread-workspace-root-hints", {}) or {}
+    for tid, path in exported_hints.items():
+        hints[str(tid)] = map_path(path)
+    data["thread-workspace-root-hints"] = hints
+    projectless = data.get("projectless-thread-ids")
+    if isinstance(projectless, list):
+        ids = set(selected_or_exported_ids())
+        data["projectless-thread-ids"] = [tid for tid in projectless if tid not in ids]
+    atom = data.get("electron-persisted-atom-state")
+    if not isinstance(atom, dict):
+        atom = {}
+    perms = atom.get("heartbeat-thread-permissions-by-id")
+    if not isinstance(perms, dict):
+        perms = {}
+    exported_perms = (registry_export.get("project_registry", {}) or {}).get("heartbeat-thread-permissions-by-id", {}) or {}
+    for tid, value in exported_perms.items():
+        perms[str(tid)] = value
+    atom["heartbeat-thread-permissions-by-id"] = perms
+    data["electron-persisted-atom-state"] = atom
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    return len(target_projects)
+
+rewritten = rewrite_jsonl_paths()
+imported = merge_sqlite_threads()
+registered = merge_global_state()
+report = {
+    "schema": 3,
+    "session_jsonl_rewritten": rewritten,
+    "sqlite_threads_imported": imported,
+    "restored_projects_registered": registered,
+    "restart_required": True,
+}
+(codex_home / "codex-rehome-ui-ready-import-report.json").write_text(
+    json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+    encoding="utf-8",
+)
+print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
+PY
 }
 
 normalize_package_permissions
@@ -422,8 +677,10 @@ copy_file_preserve "$ROOT/mac_only/Library/Preferences/com.openai.sky.CUAService
 
 restore_projects
 
+import_ui_ready_metadata
+
 rm -f "$HOME/Library/Application Support/Codex/SingletonLock" \
   "$HOME/Library/Application Support/Codex/SingletonCookie" \
   "$HOME/Library/Application Support/Codex/SingletonSocket"
 
-echo "Done. Merge restore completed. Open Codex and log in again if prompted."
+echo "Done. Merge restore completed. Restart Codex Desktop before judging sidebar/project visibility."

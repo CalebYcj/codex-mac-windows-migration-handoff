@@ -60,7 +60,9 @@ bash ./Verify-Codex-Mac-Restore.sh --json
 
 Then open Codex, check recent threads, and reopen migrated project folders from their new target paths.
 
-For Mac restores with `selected_chats/`, verifier readiness requires selected chat IDs to exist both in restored `~/.codex/sessions` and in `~/.codex/session_index.jsonl`. Project file restore is reported separately from Codex project UI registration; if UI registration is not proven, reopen the project folder manually in Codex.
+For Mac restores with `selected_chats/`, verifier readiness requires selected chat IDs to exist in restored `~/.codex/sessions`, `~/.codex/session_index.jsonl`, and target `state_*.sqlite.threads`. It also checks that rollout paths exist, thread cwd values point to restored Mac project paths, selected JSONL metadata has been path-mapped, old Windows source paths are gone from selected JSONL files, and restored projects are present in `.codex-global-state.json`.
+
+Data-layer readiness is not the same as live desktop frontend readiness. After restore, close and reopen Codex Desktop before judging whether the left sidebar visibly shows the restored project/conversations.
 
 ## Platform Notes
 
@@ -68,4 +70,4 @@ Intel Mac and Apple Silicon should not affect the core Codex data migration beca
 
 Project folders are packaged under `projects/`. Mac restores can copy them automatically with `Restore-Codex-To-Mac.sh --restore-projects`, which defaults to `~/Documents/Codex-Restored-Projects`; pass `--projects-dir <dir>` to choose another location.
 
-Windows-to-Mac packages are generated with schema version 3, forward-slash zip entries, LF/no-BOM `SHA256SUMS.txt`, generated `session_index.jsonl` when needed, and both text and JSON manifests. Mac verification checks package checksums, selected chats when present, `session_index.jsonl` readiness, restored project folders, and forbidden-file counts.
+Windows-to-Mac packages are generated with schema version 3, forward-slash zip entries, LF/no-BOM `SHA256SUMS.txt`, generated `session_index.jsonl` when needed, metadata exports for thread rows/path mapping/project UI registry, and both text and JSON manifests. Mac verification checks package checksums, selected chats when present, `session_index.jsonl` readiness, SQLite thread readiness, path mapping readiness, restored project folders, global project registry readiness, and forbidden-file counts.

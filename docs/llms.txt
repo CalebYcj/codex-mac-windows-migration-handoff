@@ -39,11 +39,11 @@ Supported migration directions:
 
 Standard mode excludes auth tokens, browser cookies, Login Data, Local Storage, `.env` files, private keys, sockets, `.git`, `node_modules`, virtual environments, and runtime caches. The target computer should log in again manually.
 
-Windows packages use package schema version 3, forward-slash zip entries, LF/no-BOM `SHA256SUMS.txt`, `MANIFEST.txt`, and `MANIFEST.json`. Windows packaging creates or repairs `home/.codex/session_index.jsonl` when needed. On Mac, restore normalizes package permissions, fails if `home/.codex` is missing, and can restore projects to `~/Documents/Codex-Restored-Projects` with `--restore-projects`.
+Windows packages use package schema version 3, forward-slash zip entries, LF/no-BOM `SHA256SUMS.txt`, `MANIFEST.txt`, and `MANIFEST.json`. Windows packaging creates or repairs `home/.codex/session_index.jsonl` when needed and exports `metadata/thread_index_export.json`, `metadata/path_map.json`, `metadata/selected_chats.json`, and `metadata/project_ui_registry_export.json`. On Mac, restore normalizes package permissions, fails if `home/.codex` is missing, and can restore projects to `~/Documents/Codex-Restored-Projects` with `--restore-projects`.
 
 Restore scripts default to merge restore. They preserve target login/config identity files and do not overwrite `state_*.sqlite`, `memories_*.sqlite`, or `goals_*.sqlite` unless `--replace-state` or `-ReplaceState` is passed. Whole-home replacement requires `--replace-codex-home` or `-ReplaceCodexHome`.
 
-Windows packages can include highlighted session JSONL files with `-SelectedChat`. These are copied to `selected_chats/`, restored into `home/.codex/sessions` when needed, and indexed in `session_index.jsonl`; the Mac verifier reports `selected_chats`, `selected_chats_in_restored_sessions`, and `selected_chats_in_session_index`.
+Windows packages can include highlighted session JSONL files with `-SelectedChat`. These are copied to `selected_chats/`, restored into `home/.codex/sessions` when needed, and indexed in `session_index.jsonl`; the Mac verifier reports selected chat readiness across sessions, session index, SQLite threads, rollout paths, Mac cwd/path mapping, session JSONL metadata, old source path removal, and global project registry. App-visible sidebar readiness still requires restarting Codex Desktop and checking the app/sidebar after restore.
 
 Do not rewrite old Codex session JSONL files in bulk. Preserve old paths in history and reopen matching project folders on the target computer.
 

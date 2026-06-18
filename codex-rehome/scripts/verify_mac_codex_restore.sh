@@ -269,6 +269,200 @@ restored_project_count() {
   find "$PROJECTS_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
 }
 
+ui_ready_kv() {
+  local py
+  if ! py="$(find_python3)"; then
+    cat <<'EOF'
+SELECTED_CHATS_IN_STATE_THREADS=0
+SELECTED_CHATS_WITH_EXISTING_ROLLOUT_PATH=0
+SELECTED_CHATS_WITH_TARGET_CWD=0
+SELECTED_CHATS_WITH_SESSION_META_TARGET_CWD=0
+SELECTED_CHATS_WITHOUT_SOURCE_PATH_IN_JSONL=0
+SELECTED_CHATS_WITH_FRESH_UPDATED_AT=0
+RESTORED_PROJECTS_IN_GLOBAL_STATE=0
+RESTORED_PROJECTS_IN_THREAD_HINTS=0
+EOF
+    return
+  fi
+  "$py" - "$PACKAGE_ROOT" "$CODEX_HOME" "$PROJECTS_DIR" <<'PY'
+import json
+import re
+import sqlite3
+import sys
+from pathlib import Path
+
+package = Path(sys.argv[1])
+codex_home = Path(sys.argv[2])
+projects_dir = Path(sys.argv[3]).expanduser()
+metadata = package / "metadata"
+
+def read_json(path, default):
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8", errors="ignore"))
+    except Exception:
+        pass
+    return default
+
+path_map = read_json(metadata / "path_map.json", {"projects": []})
+thread_export = read_json(metadata / "thread_index_export.json", {"selected_thread_ids": [], "threads": []})
+selected_meta = read_json(metadata / "selected_chats.json", {"selected_chats": []})
+
+def selected_id(path):
+    sid = ""
+    try:
+        with path.open("r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+                if row.get("type") == "session_meta" or payload.get("type") == "session_meta":
+                    sid = str(payload.get("id") or row.get("id") or sid)
+                    if sid:
+                        return sid
+                if not sid:
+                    sid = str(row.get("id") or payload.get("id") or "")
+    except Exception:
+        pass
+    if sid:
+        return sid
+    match = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", path.stem, re.I)
+    return match.group(0) if match else path.stem
+
+selected_ids = []
+for item in selected_meta.get("selected_chats", []) or []:
+    tid = item.get("id")
+    if tid and tid not in selected_ids:
+        selected_ids.append(str(tid))
+for tid in thread_export.get("selected_thread_ids", []) or []:
+    if tid and tid not in selected_ids:
+        selected_ids.append(str(tid))
+selected_dir = package / "selected_chats"
+if selected_dir.exists():
+    for path in selected_dir.glob("*.jsonl"):
+        tid = selected_id(path)
+        if tid and tid not in selected_ids:
+            selected_ids.append(tid)
+selected_ids = list(dict.fromkeys(selected_ids))
+
+target_projects = []
+source_variants = []
+for entry in path_map.get("projects", []) or []:
+    name = entry.get("package_project_name") or Path(entry.get("source_path", "")).name
+    target = str(projects_dir / name)
+    if target not in target_projects:
+        target_projects.append(target)
+    for old in entry.get("source_path_variants", []) or []:
+        if old:
+            source_variants.append(old)
+    src = entry.get("source_path")
+    if src:
+        source_variants.extend([src, "\\\\?\\" + src if not src.startswith("\\\\?\\") else src, src.replace("\\", "/"), "/" + src])
+source_variants = list(dict.fromkeys(source_variants))
+
+def find_session(tid):
+    root = codex_home / "sessions"
+    if not root.exists():
+        return None
+    matches = list(root.rglob(f"*{tid}*.jsonl"))
+    return matches[0] if matches else None
+
+def session_meta_cwd(path):
+    text = ""
+    try:
+        with path.open("r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                text += line
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+                if row.get("type") == "session_meta" or payload.get("type") == "session_meta":
+                    return str(payload.get("cwd") or "")
+    except Exception:
+        text = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+    for target in target_projects:
+        if target and target in text:
+            return target
+    return ""
+
+dbs = sorted(codex_home.glob("state_*.sqlite"), key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+rows = {}
+if dbs:
+    try:
+        con = sqlite3.connect(str(dbs[0]))
+        con.row_factory = sqlite3.Row
+        for tid in selected_ids:
+            row = con.execute("select * from threads where id=?", (tid,)).fetchone()
+            if row:
+                rows[tid] = dict(row)
+        con.close()
+    except Exception:
+        rows = {}
+
+state_count = 0
+rollout_count = 0
+target_cwd_count = 0
+meta_cwd_count = 0
+no_source_count = 0
+fresh_count = 0
+
+for tid in selected_ids:
+    row = rows.get(tid)
+    if row:
+        state_count += 1
+        rollout = row.get("rollout_path") or ""
+        if rollout and Path(str(rollout)).exists():
+            rollout_count += 1
+        cwd = str(row.get("cwd") or "")
+        if cwd and (not target_projects or cwd in target_projects):
+            target_cwd_count += 1
+        updated = row.get("updated_at_ms") or row.get("updated_at") or 0
+        try:
+            if int(updated) > 1577836800:
+                fresh_count += 1
+        except Exception:
+            pass
+    session = find_session(tid)
+    if session:
+        cwd = session_meta_cwd(session)
+        if cwd and (not target_projects or cwd in target_projects):
+            meta_cwd_count += 1
+        text = session.read_text(encoding="utf-8", errors="ignore")
+        if not any(old and (old in text or old.replace("\\", "\\\\") in text) for old in source_variants):
+            no_source_count += 1
+
+global_state = read_json(codex_home / ".codex-global-state.json", {})
+global_count = 0
+hint_count = 0
+for target in target_projects:
+    if target and all(target in (global_state.get(key) or []) for key in ["electron-saved-workspace-roots", "project-order", "active-workspace-roots"]):
+        global_count += 1
+hints = global_state.get("thread-workspace-root-hints") or {}
+for tid in selected_ids:
+    if hints.get(tid) in target_projects:
+        hint_count += 1
+
+print(f"SELECTED_CHATS_IN_STATE_THREADS={state_count}")
+print(f"SELECTED_CHATS_WITH_EXISTING_ROLLOUT_PATH={rollout_count}")
+print(f"SELECTED_CHATS_WITH_TARGET_CWD={target_cwd_count}")
+print(f"SELECTED_CHATS_WITH_SESSION_META_TARGET_CWD={meta_cwd_count}")
+print(f"SELECTED_CHATS_WITHOUT_SOURCE_PATH_IN_JSONL={no_source_count}")
+print(f"SELECTED_CHATS_WITH_FRESH_UPDATED_AT={fresh_count}")
+print(f"RESTORED_PROJECTS_IN_GLOBAL_STATE={global_count}")
+print(f"RESTORED_PROJECTS_IN_THREAD_HINTS={hint_count}")
+PY
+}
+
 CHECKSUM_STATUS="$(checksum_status)"
 SESSIONS="$(count_files "$CODEX_HOME/sessions" "*.jsonl")"
 ARCHIVED_SESSIONS="$(count_files "$CODEX_HOME/archived_sessions" "*.jsonl")"
@@ -281,6 +475,7 @@ RESTORED_PROJECT_COUNT="$(restored_project_count)"
 SELECTED_CHATS="$(selected_chats_count)"
 SELECTED_CHATS_IN_SESSIONS="$(selected_chats_in_sessions_count)"
 SELECTED_CHATS_IN_SESSION_INDEX="$(selected_chats_in_session_index_count)"
+eval "$(ui_ready_kv)"
 FORBIDDEN_CODEX="$(forbidden_count_in_codex_home)"
 FORBIDDEN_PROJECTS="$(forbidden_count_in_root "$PROJECTS_DIR")"
 FORBIDDEN_TOTAL="$((FORBIDDEN_CODEX + FORBIDDEN_PROJECTS))"
@@ -289,6 +484,12 @@ if [[ "$SELECTED_CHATS" -eq 0 || "$SELECTED_CHATS_IN_SESSION_INDEX" -eq "$SELECT
 else
   UI_LEFT_SIDEBAR_READY="false"
 fi
+if [[ "$SELECTED_CHATS" -eq 0 || "$SELECTED_CHATS_IN_STATE_THREADS" -eq "$SELECTED_CHATS" ]]; then STATE_THREADS_READY="true"; else STATE_THREADS_READY="false"; fi
+if [[ "$SELECTED_CHATS" -eq 0 || "$SELECTED_CHATS_WITH_EXISTING_ROLLOUT_PATH" -eq "$SELECTED_CHATS" ]]; then ROLLOUT_PATHS_READY="true"; else ROLLOUT_PATHS_READY="false"; fi
+if [[ "$SELECTED_CHATS" -eq 0 || "$SELECTED_CHATS_WITH_TARGET_CWD" -eq "$SELECTED_CHATS" ]]; then PROJECT_PATH_MAPPING_READY="true"; else PROJECT_PATH_MAPPING_READY="false"; fi
+if [[ "$SELECTED_CHATS" -eq 0 || "$SELECTED_CHATS_WITH_SESSION_META_TARGET_CWD" -eq "$SELECTED_CHATS" ]]; then SESSION_JSONL_PATH_MAPPING_READY="true"; else SESSION_JSONL_PATH_MAPPING_READY="false"; fi
+if [[ "$SELECTED_CHATS" -eq 0 || "$SELECTED_CHATS_WITHOUT_SOURCE_PATH_IN_JSONL" -eq "$SELECTED_CHATS" ]]; then SOURCE_PATH_REMOVED_READY="true"; else SOURCE_PATH_REMOVED_READY="false"; fi
+if [[ "$RESTORED_PROJECT_COUNT" -eq 0 || "$RESTORED_PROJECTS_IN_GLOBAL_STATE" -eq "$RESTORED_PROJECT_COUNT" ]]; then GLOBAL_PROJECT_REGISTRY_READY="true"; else GLOBAL_PROJECT_REGISTRY_READY="false"; fi
 
 if [[ "$JSON" == "true" ]]; then
   PROJECT_PATHS_JSON="$(project_paths_lines | json_string_array_from_lines)"
@@ -316,16 +517,31 @@ if [[ "$JSON" == "true" ]]; then
     "restored_project_count": $RESTORED_PROJECT_COUNT,
     "selected_chats": $SELECTED_CHATS,
     "selected_chats_in_restored_sessions": $SELECTED_CHATS_IN_SESSIONS,
-    "selected_chats_in_session_index": $SELECTED_CHATS_IN_SESSION_INDEX
+    "selected_chats_in_session_index": $SELECTED_CHATS_IN_SESSION_INDEX,
+    "selected_chats_in_state_threads": $SELECTED_CHATS_IN_STATE_THREADS,
+    "selected_chats_with_existing_rollout_path": $SELECTED_CHATS_WITH_EXISTING_ROLLOUT_PATH,
+    "selected_chats_with_target_cwd": $SELECTED_CHATS_WITH_TARGET_CWD,
+    "selected_chats_with_session_meta_target_cwd": $SELECTED_CHATS_WITH_SESSION_META_TARGET_CWD,
+    "selected_chats_without_source_path_in_jsonl": $SELECTED_CHATS_WITHOUT_SOURCE_PATH_IN_JSONL,
+    "selected_chats_with_fresh_updated_at": $SELECTED_CHATS_WITH_FRESH_UPDATED_AT,
+    "restored_projects_in_global_state": $RESTORED_PROJECTS_IN_GLOBAL_STATE,
+    "restored_projects_in_thread_hints": $RESTORED_PROJECTS_IN_THREAD_HINTS
   },
   "restored_project_paths": $PROJECT_PATHS_JSON,
   "ui_readiness": {
     "selected_chats_in_sessions_ready": $(test "$SELECTED_CHATS_IN_SESSIONS" -eq "$SELECTED_CHATS" && echo true || echo false),
-    "selected_chats_in_session_index_ready": $UI_LEFT_SIDEBAR_READY
+    "selected_chats_in_session_index_ready": $UI_LEFT_SIDEBAR_READY,
+    "state_threads_ready": $STATE_THREADS_READY,
+    "rollout_paths_ready": $ROLLOUT_PATHS_READY,
+    "project_path_mapping_ready": $PROJECT_PATH_MAPPING_READY,
+    "session_jsonl_path_mapping_ready": $SESSION_JSONL_PATH_MAPPING_READY,
+    "source_path_removed_ready": $SOURCE_PATH_REMOVED_READY,
+    "global_project_registry_ready": $GLOBAL_PROJECT_REGISTRY_READY,
+    "app_restart_required": true
   },
   "project_ui_registration": {
-    "status": "not_auto_registered",
-    "message": "project files restored, user must reopen project folder in Codex"
+    "status": "global_registry_checked",
+    "message": "project files restored and global registry checked; restart Codex Desktop before judging app-visible sidebar readiness"
   },
   "forbidden_files": {
     "codex_home": $FORBIDDEN_CODEX,
@@ -368,14 +584,25 @@ echo "  restored_project_count: $RESTORED_PROJECT_COUNT"
 echo "  selected_chats: $SELECTED_CHATS"
 echo "  selected_chats_in_restored_sessions: $SELECTED_CHATS_IN_SESSIONS"
 echo "  selected_chats_in_session_index: $SELECTED_CHATS_IN_SESSION_INDEX"
+echo "  selected_chats_in_state_threads: $SELECTED_CHATS_IN_STATE_THREADS"
+echo "  selected_chats_with_existing_rollout_path: $SELECTED_CHATS_WITH_EXISTING_ROLLOUT_PATH"
+echo "  selected_chats_with_target_cwd: $SELECTED_CHATS_WITH_TARGET_CWD"
+echo "  selected_chats_with_session_meta_target_cwd: $SELECTED_CHATS_WITH_SESSION_META_TARGET_CWD"
+echo "  selected_chats_without_source_path_in_jsonl: $SELECTED_CHATS_WITHOUT_SOURCE_PATH_IN_JSONL"
+echo "  selected_chats_with_fresh_updated_at: $SELECTED_CHATS_WITH_FRESH_UPDATED_AT"
+echo "  restored_projects_in_global_state: $RESTORED_PROJECTS_IN_GLOBAL_STATE"
+echo "  restored_projects_in_thread_hints: $RESTORED_PROJECTS_IN_THREAD_HINTS"
 echo "  forbidden_files_total: $FORBIDDEN_TOTAL"
 echo "  selected_chats_in_session_index_ready: $UI_LEFT_SIDEBAR_READY"
+echo "  state_threads_ready: $STATE_THREADS_READY"
+echo "  rollout_paths_ready: $ROLLOUT_PATHS_READY"
+echo "  global_project_registry_ready: $GLOBAL_PROJECT_REGISTRY_READY"
 echo
 echo "Restored project paths:"
 project_paths_lines | sed 's/^/  /' || true
-echo "Project UI registration: project files restored, user must reopen project folder in Codex"
+echo "Project UI registration: global registry checked; restart Codex Desktop before judging sidebar visibility"
 echo
 echo "Next checks:"
 echo "  1. Open Codex and confirm old threads are visible."
-echo "  2. Reopen migrated project folders from their Mac paths."
+echo "  2. Restart Codex Desktop before judging sidebar/project visibility."
 echo "  3. Reconnect GitHub, Gmail, Chrome, Feishu, or other services if prompted."

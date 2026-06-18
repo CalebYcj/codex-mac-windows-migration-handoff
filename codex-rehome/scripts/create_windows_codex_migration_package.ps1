@@ -20,6 +20,7 @@ $Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $Stage = Join-Path $Out "Codex-Migration-Windows-Source-$Stamp"
 $ZipPath = "$Stage.zip"
 $Docs = Join-Path $Stage "docs"
+$Metadata = Join-Path $Stage "metadata"
 
 New-Item -ItemType Directory -Force -Path `
     (Join-Path $Stage "home"), `
@@ -28,6 +29,7 @@ New-Item -ItemType Directory -Force -Path `
     (Join-Path $Stage "mac_only\Library\Preferences"), `
     (Join-Path $Stage "projects"), `
     (Join-Path $Stage "selected_chats"), `
+    $Metadata, `
     $Docs | Out-Null
 
 $AlwaysSkipNames = @(
@@ -67,6 +69,28 @@ function Write-RawUtf8NoBomLf {
     $normalized = $Text -replace "`r`n", "`n" -replace "`r", "`n"
     if (-not $normalized.EndsWith("`n")) { $normalized += "`n" }
     [System.IO.File]::WriteAllText($Path, $normalized, $encoding)
+}
+
+function Find-PythonForSqlite {
+    $candidates = @(
+        @("python"),
+        @("python3"),
+        @("py", "-3")
+    )
+    foreach ($candidate in $candidates) {
+        $cmd = $candidate[0]
+        $extra = @()
+        if ($candidate.Count -gt 1) { $extra = $candidate[1..($candidate.Count - 1)] }
+        $found = Get-Command $cmd -ErrorAction SilentlyContinue
+        if (-not $found) { continue }
+        try {
+            & $cmd @extra -c "import json, sqlite3" 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                return @{ command = $cmd; args = $extra }
+            }
+        } catch {}
+    }
+    return $null
 }
 
 function Should-Skip {
@@ -256,6 +280,251 @@ function Ensure-SessionIndex {
     Write-Utf8NoBomLf -Path $indexPath -Lines $lines
 }
 
+function Export-UiReadyMetadata {
+    $requestPath = Join-Path $Metadata "export_request.json"
+    $stateFiles = @()
+    $sourceCodexHome = Join-Path $env:USERPROFILE ".codex"
+    if (Test-Path -LiteralPath $sourceCodexHome -PathType Container) {
+        $stateFiles = @(Get-ChildItem -LiteralPath $sourceCodexHome -Filter "state_*.sqlite" -Force -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | ForEach-Object { $_.FullName })
+    }
+
+    $request = [ordered]@{
+        created_at = $Stamp
+        source_os = "Windows"
+        source_home = $env:USERPROFILE
+        source_codex_home = $sourceCodexHome
+        stage = $Stage
+        metadata_dir = $Metadata
+        projects = $Project
+        selected_chats = $SelectedChat
+        state_files = $stateFiles
+        global_state = (Join-Path $sourceCodexHome ".codex-global-state.json")
+    }
+    Write-RawUtf8NoBomLf -Path $requestPath -Text ($request | ConvertTo-Json -Depth 8)
+
+    $python = Find-PythonForSqlite
+    if (-not $python) {
+        Write-Warning "Python with sqlite3 was not found. UI-ready metadata export skipped."
+        return
+    }
+
+    $pyCode = @'
+import json
+import os
+import re
+import sqlite3
+import sys
+from pathlib import Path, PureWindowsPath
+
+request_path = Path(sys.argv[1])
+req = json.loads(request_path.read_text(encoding="utf-8"))
+metadata_dir = Path(req["metadata_dir"])
+metadata_dir.mkdir(parents=True, exist_ok=True)
+source_home = req.get("source_home") or ""
+source_codex_home = Path(req.get("source_codex_home") or "")
+
+def win_norm(path):
+    if not path:
+        return ""
+    s = str(path).replace("/", "\\")
+    if s.startswith("\\\\?\\"):
+        s = s[4:]
+    return s.rstrip("\\").lower()
+
+def variants(path):
+    vals = []
+    if not path:
+        return vals
+    s = str(path)
+    vals.append(s)
+    if s.startswith("\\\\?\\"):
+        vals.append(s[4:])
+    if not s.startswith("\\\\?\\"):
+        vals.append("\\\\?\\" + s)
+    vals.append(s.replace("\\", "/"))
+    if s.startswith("\\\\?\\"):
+        vals.append(s[4:].replace("\\", "/"))
+    vals.append("/" + s)
+    return list(dict.fromkeys(vals))
+
+def selected_id(path):
+    sid = ""
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+                if row.get("type") == "session_meta" or payload.get("type") == "session_meta":
+                    sid = str(payload.get("id") or row.get("id") or sid)
+                    if sid:
+                        return sid
+                if not sid:
+                    sid = str(row.get("id") or payload.get("id") or "")
+    except Exception:
+        pass
+    if sid:
+        return sid
+    match = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", Path(path).stem, re.I)
+    return match.group(0) if match else Path(path).stem
+
+project_entries = []
+project_roots = set()
+for project in req.get("projects") or []:
+    if not project:
+        continue
+    source_path = str(Path(project))
+    name = Path(source_path).name
+    entry = {
+        "source_path": source_path,
+        "source_path_normalized": win_norm(source_path),
+        "source_path_variants": variants(source_path),
+        "package_project_name": name,
+        "package_project_path": f"projects/{name}",
+        "target_mac_default_path": f"~/Documents/Codex-Restored-Projects/{name}"
+    }
+    project_entries.append(entry)
+    project_roots.add(win_norm(source_path))
+
+selected_ids = []
+selected_chat_files = []
+for chat in req.get("selected_chats") or []:
+    if not chat:
+        continue
+    sid = selected_id(chat)
+    selected_ids.append(sid)
+    selected_chat_files.append({"id": sid, "source_path": chat, "package_path": f"selected_chats/{Path(chat).name}"})
+
+def path_matches_project(path):
+    n = win_norm(path)
+    if not n:
+        return False
+    return any(n == root or n.startswith(root + "\\") for root in project_roots)
+
+thread_rows = []
+seen = set()
+state_files = [p for p in req.get("state_files") or [] if p and Path(p).exists()]
+for state_file in state_files:
+    try:
+        con = sqlite3.connect(f"file:{Path(state_file).as_posix()}?mode=ro", uri=True)
+        con.row_factory = sqlite3.Row
+        cols = [r[1] for r in con.execute("pragma table_info(threads)").fetchall()]
+        order_col = "updated_at_ms" if "updated_at_ms" in cols else "updated_at"
+        rows = con.execute(f"select * from threads order by {order_col} desc").fetchall()
+    except Exception:
+        continue
+    for row in rows:
+        d = {k: row[k] for k in row.keys()}
+        tid = str(d.get("id") or "")
+        if not tid or tid in seen:
+            continue
+        include = tid in selected_ids or path_matches_project(d.get("cwd"))
+        if not include and not selected_ids and not project_roots and len(thread_rows) < 50:
+            include = True
+        if not include:
+            continue
+        rollout_path = d.get("rollout_path") or ""
+        rel = ""
+        try:
+            rp = Path(str(rollout_path))
+            ch = source_codex_home
+            rel_to_codex = rp.relative_to(ch)
+            rel = "home/.codex/" + rel_to_codex.as_posix()
+        except Exception:
+            rel = ""
+        d["source_state_file"] = str(state_file)
+        d["relative_package_session_path"] = rel
+        thread_rows.append(d)
+        seen.add(tid)
+    try:
+        con.close()
+    except Exception:
+        pass
+
+for row in thread_rows:
+    cwd = row.get("cwd") or ""
+    if not cwd:
+        continue
+    cwd_name = PureWindowsPath(str(cwd).replace("\\\\?\\", "")).name
+    for entry in project_entries:
+        if entry.get("package_project_name") == cwd_name:
+            existing = set(entry.get("source_path_variants") or [])
+            for value in variants(cwd):
+                if value and value not in existing:
+                    entry.setdefault("source_path_variants", []).append(value)
+                    existing.add(value)
+            entry.setdefault("additional_source_paths", [])
+            if cwd not in entry["additional_source_paths"]:
+                entry["additional_source_paths"].append(cwd)
+            project_roots.add(win_norm(cwd))
+
+thread_ids = {str(r.get("id")) for r in thread_rows if r.get("id")}
+global_state_path = Path(req.get("global_state") or "")
+registry = {
+    "electron-saved-workspace-roots": [],
+    "project-order": [],
+    "active-workspace-roots": [],
+    "projectless-thread-ids": [],
+    "thread-workspace-root-hints": {},
+    "thread-projectless-output-directories": {},
+    "heartbeat-thread-permissions-by-id": {}
+}
+if global_state_path.exists():
+    try:
+        gs = json.loads(global_state_path.read_text(encoding="utf-8", errors="ignore"))
+        for key in ["electron-saved-workspace-roots", "project-order", "active-workspace-roots"]:
+            registry[key] = [p for p in gs.get(key, []) if path_matches_project(p) or win_norm(p) in project_roots]
+        registry["projectless-thread-ids"] = [tid for tid in gs.get("projectless-thread-ids", []) if tid in thread_ids]
+        hints = gs.get("thread-workspace-root-hints", {})
+        registry["thread-workspace-root-hints"] = {tid: path for tid, path in hints.items() if tid in thread_ids or path_matches_project(path)}
+        outputs = gs.get("thread-projectless-output-directories", {})
+        registry["thread-projectless-output-directories"] = {tid: path for tid, path in outputs.items() if tid in thread_ids or path_matches_project(path)}
+        perms = (gs.get("electron-persisted-atom-state", {}) or {}).get("heartbeat-thread-permissions-by-id", {})
+        registry["heartbeat-thread-permissions-by-id"] = {tid: perms[tid] for tid in thread_ids if tid in perms}
+    except Exception:
+        pass
+
+(metadata_dir / "path_map.json").write_text(json.dumps({
+    "schema": 3,
+    "source_os": "Windows",
+    "target_os": "Mac",
+    "projects": project_entries
+}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+(metadata_dir / "selected_chats.json").write_text(json.dumps({
+    "schema": 3,
+    "selected_chats": selected_chat_files
+}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+(metadata_dir / "thread_index_export.json").write_text(json.dumps({
+    "schema": 3,
+    "source_os": "Windows",
+    "source_state_files": state_files,
+    "selected_thread_ids": selected_ids,
+    "threads": thread_rows
+}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+(metadata_dir / "project_ui_registry_export.json").write_text(json.dumps({
+    "schema": 3,
+    "source_os": "Windows",
+    "source_global_state": str(global_state_path) if global_state_path else "",
+    "project_registry": registry
+}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+'@
+    $tmpPy = Join-Path $Metadata "export_ui_ready_metadata.py"
+    Write-RawUtf8NoBomLf -Path $tmpPy -Text $pyCode
+    & $python.command @($python.args) $tmpPy $requestPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "UI-ready metadata export failed."
+    }
+    Remove-Item -LiteralPath $tmpPy -Force -ErrorAction SilentlyContinue
+}
+
 function New-CrossPlatformZip {
     param(
         [Parameter(Mandatory=$true)][string]$SourceDirectory,
@@ -331,6 +600,7 @@ foreach ($chatPath in $SelectedChat) {
 }
 
 Ensure-SessionIndex
+Export-UiReadyMetadata
 
 $SensitiveReport = Join-Path $Docs "SENSITIVE-FILES.txt"
 $sensitivePaths = @(
@@ -401,6 +671,8 @@ Selected chat files, if included, are under selected_chats/. They are duplicated
 
 Restore scripts merge into the target Codex home by default. Existing target login/config identity files are preserved. Use --replace-codex-home / -ReplaceCodexHome only when you intentionally want a destructive full replacement. State databases are not overwritten unless --replace-state / -ReplaceState is passed.
 
+Schema v3 packages include metadata/thread_index_export.json, metadata/path_map.json, and metadata/project_ui_registry_export.json for UI-ready Mac restore checks.
+
 By default this package excludes browser login state, auth.json, .env files, and private keys. If it was created with full-with-secrets, treat it like a password vault.
 "@
 Write-RawUtf8NoBomLf -Path (Join-Path $Stage "README-Restore.txt") -Text $readme
@@ -430,6 +702,9 @@ $counts = [ordered]@{
     session_index_entries = Count-JsonlEntries -Path (Join-Path $codexHome "session_index.jsonl")
     projects = Count-ImmediateDirectories -Path $projectsRoot
     selected_chats = Count-Files -Path (Join-Path $Stage "selected_chats") -Filter "*.jsonl"
+    thread_index_export = Count-Files -Path $Metadata -Filter "thread_index_export.json"
+    path_map = Count-Files -Path $Metadata -Filter "path_map.json"
+    project_ui_registry_export = Count-Files -Path $Metadata -Filter "project_ui_registry_export.json"
 }
 
 $manifestText = @()
@@ -464,6 +739,7 @@ $manifestJson = [ordered]@{
     exclude_strategy = $ExcludeSummary
     notes = @(
         "Path mappings are recorded rather than applied to JSONL sessions in place.",
+        "Schema v3 metadata exports thread rows, path mapping, and non-sensitive project UI registry hints for target restore.",
         "Use docs/SENSITIVE-FILES.txt to review suspected sensitive files without exposing values.",
         "Run the restore script for the target OS only after closing Codex on that target."
     )

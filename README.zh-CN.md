@@ -233,7 +233,9 @@ bash ./Restore-Codex-To-Mac.sh --restore-projects
 bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
-Mac verifier 会区分“文件已经复制过去”和“Codex 左侧栏索引是否准备好”。如果使用了 selected chats，必须同时看到 selected chat 存在于 `~/.codex/sessions` 和 `~/.codex/session_index.jsonl`，才算 UI 侧栏 readiness 通过。
+Mac verifier 会区分“文件已经复制过去”和“Codex 左侧栏索引是否准备好”。如果使用了 selected chats，必须同时看到 selected chat 存在于 `~/.codex/sessions`、`~/.codex/session_index.jsonl`、`state_*.sqlite.threads`，并且 `rollout_path` 指向真实存在的 Mac JSONL、`cwd` 指向恢复后的 Mac 项目路径、selected JSONL 里不再残留旧 Windows 项目路径、恢复项目已经写入 `.codex-global-state.json`，才算数据层 UI readiness 通过。
+
+注意：数据层 readiness 不等于正在运行的桌面前端已经刷新。恢复后需要完全退出并重新打开 Codex Desktop，再判断左侧栏是否真的显示恢复项目和对话。
 
 ## 路径对应关系
 
@@ -263,6 +265,7 @@ Windows 端主要数据：
 - 默认不要迁移浏览器 Cookies、Login Data、Local Storage、`.env`、API key、私钥。
 - 默认恢复是 merge，不是 replace。不要使用 `--replace-codex-home` 或 `-ReplaceCodexHome`，除非用户明确接受覆盖目标 Codex home 的风险。
 - 默认不要覆盖 `state_*.sqlite`、`memories_*.sqlite`、`goals_*.sqlite`。只有用户明确要求时才使用 `--replace-state` 或 `-ReplaceState`。
+- schema v3 会准备项目/对话的 UI-ready 数据层，但 app-visible sidebar readiness 必须在重启 Codex Desktop 后确认。
 - 如果用户要求 `full-with-secrets`，必须明确提醒风险。
 - 跨系统恢复后，旧对话里的绝对路径可能不能直接使用，需要在目标电脑重新打开对应项目目录。
 - 如果 Windows 上 Codex 启动异常，可以关闭 Codex 后删除 `%APPDATA%\Codex` 下的 `SingletonLock`、`SingletonCookie`、`SingletonSocket`。
