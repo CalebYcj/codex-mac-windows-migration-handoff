@@ -67,8 +67,8 @@ Before running commands, tell the user which stage they are in and what they nee
    - Windows source: run `scripts/create_windows_codex_migration_package.ps1`.
    - Best practice: install/open Codex once on the target computer, then close Codex before restoring.
    - For the cleanest package, run the packaging script after closing Codex. If running from inside Codex, tell the user that active SQLite/log files can change while copying; verify package size and rerun if needed.
-   - Include optional project folders with repeated `--project /path/to/project` arguments.
-   - On Windows, include highlighted chat/session JSONL files for audit with repeated `-SelectedChat <path>` arguments. These files are copied to `selected_chats/`, forced into the restorable `home/.codex/sessions` tree when needed, indexed in `home/.codex/session_index.jsonl`, and included in schema v3 metadata exports.
+   - Include optional project folders with repeated `--project /path/to/project` arguments on Mac or repeated `-Project <path>` arguments on Windows.
+   - Include highlighted chat/session JSONL files for audit with repeated `--selected-chat <path>` on Mac or repeated `-SelectedChat <path>` on Windows. These files are copied to `selected_chats/` and included in schema v3 metadata exports. Windows packaging also forces selected chats into the restorable `home/.codex/sessions` tree and `session_index.jsonl` when needed.
    - Use the script's default exclusions for runtime/cache/dev files such as `.tmp`, `process_manager`, `vendor_imports`, `.git`, `node_modules`, `.venv`, sockets, and browser login databases. These exclusions are necessary because real Mac packages can fail on socket files and unreadable Git/cache objects.
 
 4. Transfer the generated `.zip`.
@@ -112,8 +112,8 @@ Real Mac source validation found this useful shape:
 ## Feature Notes
 
 - All directions use the same neutral package layout with target-specific restore scripts.
-- Windows packages use schema version 3, forward-slash zip entries, LF/no-BOM checksums, `MANIFEST.txt`, and `MANIFEST.json` so macOS can unzip and verify them directly.
-- Windows packages can include `selected_chats/` via `-SelectedChat`; Mac and Windows verification report selected chat count, restored-session matches, `session_index.jsonl` matches, SQLite thread readiness, path mapping readiness, global project registry readiness, and Codex app project registration readiness.
+- Mac and Windows packages use schema version 3 metadata, LF/no-BOM checksums, `MANIFEST.txt`, and `MANIFEST.json`. Windows packages also use forward-slash zip entries so macOS can unzip and verify them directly.
+- Mac packages can include `selected_chats/` via `--selected-chat`; Windows packages can include them via `-SelectedChat`. Mac and Windows verification report selected chat count, restored-session matches, `session_index.jsonl` matches, SQLite thread readiness, path mapping readiness, global project registry readiness, and Codex app project registration readiness.
 - Schema v3 packages include `metadata/thread_index_export.json`, `metadata/path_map.json`, `metadata/selected_chats.json`, and `metadata/project_ui_registry_export.json`.
 - Always run the target verifier before telling the user migration is complete.
 - Mac restore normalizes package permissions, fails if `home/.codex` is missing, defaults to merge restore, and can restore project folders with `--restore-projects`.
@@ -123,8 +123,8 @@ Real Mac source validation found this useful shape:
 
 ## Scripts
 
-- `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a neutral migration zip with Windows/Mac restore scripts, README, manifest, checksums, and optional project folders.
-- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a Mac-friendly neutral migration zip with forward-slash entries, LF/no-BOM `SHA256SUMS.txt`, Windows/Mac restore scripts, README, manifests, checksums, optional project folders, and optional selected chat files.
+- `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a neutral migration zip with schema v3 metadata, Windows/Mac restore scripts, README, manifest, checksums, optional project folders, and optional selected chat files.
+- `scripts/create_windows_codex_migration_package.ps1`: Run on Windows to build a Mac-friendly neutral migration zip with schema v3 metadata, forward-slash entries, LF/no-BOM `SHA256SUMS.txt`, Windows/Mac restore scripts, README, manifests, checksums, optional project folders, and optional selected chat files.
 - `scripts/restore_codex_to_windows.ps1`: Standalone Windows restore script with merge restore, optional `-RestoreProjects`, schema v3 UI-ready metadata import, and best-effort Codex Desktop project registration. Packages also embed a copy named `Restore-Codex-To-Windows.ps1`.
 - `scripts/restore_codex_to_mac.sh`: Standalone Mac restore script. Packages also embed a copy named `Restore-Codex-To-Mac.sh`.
 - `scripts/collect_windows_codex_inventory.ps1`: Run on Windows before or after restore to summarize existing Codex data locations, sizes, and project folder candidates.

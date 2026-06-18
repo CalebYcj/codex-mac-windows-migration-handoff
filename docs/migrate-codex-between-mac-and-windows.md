@@ -35,6 +35,15 @@ bash scripts/create_mac_codex_migration_package.sh \
 
 The generated package is written to the Mac Desktop by default.
 
+For an acceptance package that highlights specific conversations, pass selected session JSONL files:
+
+```bash
+bash scripts/create_mac_codex_migration_package.sh \
+  --mode standard \
+  --project "$HOME/Documents/New project" \
+  --selected-chat "$HOME/.codex/sessions/2026/06/18/rollout-example.jsonl"
+```
+
 ## Package On Windows
 
 Run from PowerShell:
@@ -92,7 +101,7 @@ Codex history and project files are separate. If the old conversations mention a
 
 Do not bulk rewrite old JSONL session files by hand. Keep the history intact, let the target restore script apply schema v3 path mappings for selected restored conversations, and use Codex Desktop's own project-open path to register the restored workspace.
 
-Windows-generated packages are Mac-friendly: zip entries use forward slashes, `SHA256SUMS.txt` uses LF with no BOM, and both `MANIFEST.txt` and `MANIFEST.json` include source OS, schema version, mode, counts, and exclusion strategy.
+Mac and Windows packages include schema v3 metadata for path mapping, selected chats, thread rows, and project UI registry hints. Windows-generated packages are Mac-friendly: zip entries use forward slashes, `SHA256SUMS.txt` uses LF with no BOM, and both `MANIFEST.txt` and `MANIFEST.json` include source OS, schema version, mode, counts, and exclusion strategy.
 
 If `selected_chats/` is present, the Mac and Windows verifiers report the selected chat count and whether those chats also appear in restored `.codex/sessions`, `session_index.jsonl`, and `state_*.sqlite.threads`.
 

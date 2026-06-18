@@ -201,6 +201,14 @@ bash scripts/create_mac_codex_migration_package.sh \
   --project "$HOME/Documents/New project"
 ```
 
+To highlight specific conversations for UI-readiness checks:
+
+```bash
+bash scripts/create_mac_codex_migration_package.sh \
+  --project "$HOME/Documents/New project" \
+  --selected-chat "$HOME/.codex/sessions/2026/06/18/rollout-example.jsonl"
+```
+
 For a fuller inventory without secrets:
 
 ```bash
@@ -274,7 +282,7 @@ Then verify:
 bash ./Verify-Codex-Mac-Restore.sh --json
 ```
 
-The Mac and Windows verifiers report file-level restore plus schema v3 UI-ready data layers when the package contains that metadata. For selected chats, readiness requires session files, `session_index.jsonl`, `state_*.sqlite.threads`, existing `rollout_path`, target `cwd` path mapping, remapped session JSONL metadata, no old source path left in selected JSONL files, and restored project paths in `.codex-global-state.json`.
+The Mac and Windows verifiers report file-level restore plus schema v3 UI-ready data layers. For selected chats, readiness requires session files, `session_index.jsonl`, `state_*.sqlite.threads`, existing `rollout_path`, target `cwd` path mapping, remapped session JSONL metadata, no old source path left in selected JSONL files, and restored project paths in `.codex-global-state.json`.
 
 ## Inventory Helpers
 
