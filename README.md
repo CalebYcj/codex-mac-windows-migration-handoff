@@ -1,16 +1,32 @@
-# Codex Rehome - Move OpenAI Codex Desktop Between Mac and Windows
+# Codex Rehome - Codex 跨 Mac / Windows 搬家工具
+
+Codex Rehome 是一个开源 Codex skill，用来在 macOS 和 Windows 电脑之间迁移 OpenAI Codex Desktop。它支持 Mac 转 Windows、Windows 转 Mac、Windows 转 Windows、Mac 转 Mac，帮助打包和恢复 Codex 对话、sessions、记忆、skills、plugins、MCP/connectors、生成图片、项目文件夹、路径映射和恢复检查脚本。
+
+这个项目适合这些场景：换电脑、离职交接、重装系统、把旧电脑上的 Codex 历史对话和项目带到新电脑、备份 Codex conversations/sessions、恢复 Codex skills/plugins，或者把一个本地 AI agent 工作现场交接到另一台电脑。
+
+在 GitHub 里搜索 `codex-rehome` 就能找到这个项目。
+
+## 快速理解
+
+这不是让你手动复制几个文件夹，而是让旧电脑上的 Codex/AI 帮你把 Codex 数据和选中的项目文件打成一个私密 zip，再让新电脑上的 Codex/AI 解压、恢复、改路径、注册项目并检查结果。
+
+一句话流程：
+
+1. 旧电脑 AI 负责打包。
+2. 你负责把 zip 私密传到新电脑。
+3. 新电脑 AI 负责恢复、检查，并把项目重新打开到 Codex Desktop 里。
+
+## 重要预期
+
+跨系统迁移后，历史对话通常可以迁过去并继续查看；项目文件也可以恢复到新电脑的新路径。但是旧对话框里绑定的原始工作目录不一定能原样继续执行，尤其是 Windows 路径和 macOS 路径完全不同。
+
+更稳妥的做法是：把旧对话当作历史记录和上下文参考，在新电脑上从恢复后的项目文件夹重新打开一个项目对话继续工作。
+
+## English Overview
 
 Codex Rehome is an open-source Codex skill for moving OpenAI Codex Desktop between macOS and Windows computers. It helps package and restore Codex conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, path mappings, and restore verification scripts.
 
 Use this project when you need to migrate Codex Desktop from Mac to Windows, Windows to Mac, Windows to Windows, or Mac to Mac; back up Codex conversations and sessions; restore Codex skills and plugins; or hand off a local AI agent workspace to another computer.
-
-Find it on GitHub by searching `codex-rehome`.
-
-中文说明: 这是一个用于在 Mac 和 Windows 电脑之间迁移 OpenAI Codex Desktop 的开源 Codex skill，支持 Mac 转 Windows、Windows 转 Mac、Windows 转 Windows、Mac 转 Mac，以及迁移对话、sessions、记忆、skills、plugins、MCP、生成物和项目文件夹。
-
-给中文用户的简单说法：这不是让你手动复制几个文件夹，而是让旧电脑上的 Codex/AI 帮你把 Codex 数据和选中的项目文件打成一个私密 zip，再让新电脑上的 Codex/AI 解压、恢复、改路径、注册项目并检查结果。适合换电脑、离职交接、重装系统、把旧 Codex 对话和项目带到新电脑继续参考的场景。
-
-重要预期：跨系统迁移后，历史对话通常可以迁过去并继续查看；项目文件也可以恢复到新电脑的新路径。但是旧对话框里绑定的原始工作目录不一定能原样继续执行，尤其是 Windows 路径和 macOS 路径完全不同。更稳妥的做法是把旧对话当作历史记录和上下文参考，在新电脑上从恢复后的项目文件夹重新打开一个项目对话继续工作。
 
 ## Core Lesson
 
