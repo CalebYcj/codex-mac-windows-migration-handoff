@@ -22,11 +22,43 @@ Codex Rehome 是一个开源 Codex skill，用来在 macOS 和 Windows 电脑之
 
 更稳妥的做法是：把旧对话当作历史记录和上下文参考，在新电脑上从恢复后的项目文件夹重新打开一个项目对话继续工作。
 
+## 重装系统场景
+
+如果你是在同一台电脑上重装 Windows，而且 Codex 和项目主要在 C 盘，迁移包一定不要只放在桌面、下载、`C:\Users\...` 或任何会被重装系统清掉的位置。
+
+重装前让当前系统里的 Codex/AI 做这几件事：
+
+1. 用 `codex-rehome` 打包 Codex 数据和需要保留的项目文件夹。
+2. 把输出目录指定到非系统盘或移动硬盘，例如 `D:\Codex-Rehome-Backup`、`E:\Codex-Rehome-Backup`、`F:\Codex-Rehome-Backup`。
+3. 同时保存这个 GitHub 地址、README 截图，或一段给新系统 Codex 的恢复说明文字。
+4. 确认 zip、校验文件、manifest 和恢复说明都在非 C 盘后，再重装系统。
+
+Windows 打包时可以这样指定输出位置：
+
+```powershell
+.\codex-rehome\scripts\create_windows_codex_migration_package.ps1 `
+  -Project "$env:USERPROFILE\Documents\New project" `
+  -Out "D:\Codex-Rehome-Backup"
+```
+
+重装后，先安装并登录 Codex，再把备份目录里的 zip 和恢复说明交给新系统里的 Codex/AI，让它解压、恢复、注册项目并运行 verifier。
+
+可以把下面这段文字和 zip 一起保存到非 C 盘，重装后直接发给新系统里的 Codex：
+
+```text
+我刚重装完系统。这个目录里有我重装前用 codex-rehome 生成的 Codex 迁移包。
+请使用 https://github.com/CalebYcj/codex-rehome 的最新说明，帮我解压这个 zip，
+运行 Windows 恢复脚本 Restore-Codex-To-Windows.ps1 -RestoreProjects，
+把项目恢复到 Documents\Codex-Restored-Projects，注册/打开恢复后的项目，
+最后运行 Verify-Codex-Windows-Restore.ps1 -Json 并告诉我哪些对话、skills、plugins、项目恢复成功。
+不要恢复 auth token、浏览器 cookies、.env、私钥、node_modules、.git 或虚拟环境。
+```
+
 ## English Overview
 
 Codex Rehome is an open-source Codex skill for moving OpenAI Codex Desktop between macOS and Windows computers. It helps package and restore Codex conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, path mappings, and restore verification scripts.
 
-Use this project when you need to migrate Codex Desktop from Mac to Windows, Windows to Mac, Windows to Windows, or Mac to Mac; back up Codex conversations and sessions; restore Codex skills and plugins; or hand off a local AI agent workspace to another computer.
+Use this project when you need to migrate Codex Desktop from Mac to Windows, Windows to Mac, Windows to Windows, Mac to Mac, or preserve Codex before reinstalling the same computer's operating system; back up Codex conversations and sessions; restore Codex skills and plugins; or hand off a local AI agent workspace to another computer.
 
 ## Core Lesson
 
