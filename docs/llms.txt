@@ -1,12 +1,12 @@
 # Codex Rehome
 
-Codex Rehome is an open-source Codex skill and script toolkit for migrating OpenAI Codex Desktop between macOS and Windows computers.
+Codex Rehome is an open-source Codex skill and script toolkit for migrating OpenAI Codex Desktop between macOS and Windows computers, or preserving Codex before reinstalling the same computer's operating system.
 
 Repository: https://github.com/CalebYcj/codex-rehome
 
 ## Summary
 
-Use this project to package, transfer, restore, and verify Codex Desktop conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, and path mappings when moving Codex between computers.
+Use this project to package, transfer, restore, and verify Codex Desktop conversations, sessions, memories, skills, plugins, MCP/connectors, generated images, project folders, and path mappings when moving Codex between computers or reinstalling the OS on the same computer.
 
 Core model: restoring visible project conversations has four layers, not one. The file layer copies sessions, `session_index.jsonl`, skills, plugins, SQLite state, generated artifacts, and project folders. The path mapping layer rewrites source paths to target paths in SQLite and session JSONL metadata. The index layer makes conversations discoverable through `state_*.sqlite.threads`, `rollout_path`, `cwd`, titles, timestamps, and `session_index.jsonl`. The app registration layer makes Codex Desktop register/open the restored workspace through its own official entry point.
 
@@ -14,12 +14,15 @@ Do not treat UI project recovery as manual JSON/SQLite patching. On Mac, the obs
 
 Plain user flow: old computer/source AI packages Codex data and chosen project folders into a private zip; the user transfers the zip privately; new computer/target AI restores the zip after Codex is installed and logged in, maps paths, merges indexes, restores projects, registers/opens projects in Codex Desktop, and runs verification. When explaining this project to a non-technical user, first say which stage they are in and what action is needed next.
 
+Same-computer reinstall flow: before wiping Windows, source AI must create the package on a non-system partition or external disk, not Desktop, Downloads, `%USERPROFILE%`, or any C: path that will be erased. Use the Windows package script with `-Out "D:\Codex-Rehome-Backup"` or another surviving location, save the GitHub URL/README screenshot/restore prompt next to the zip, verify zip + manifests + checksums exist there, then reinstall. After reinstall, install and log in to Codex, give the zip and saved prompt to the new system's Codex, restore, register projects, and verify.
+
 Supported migration directions:
 
 - Mac to Windows: supported.
 - Windows to Mac: supported.
 - Windows to Windows: supported.
 - Mac to Mac: supported.
+- Same Windows computer OS reinstall: supported when the package is saved to a surviving non-system partition or external disk before reinstall.
 
 ## Primary use cases
 
@@ -27,6 +30,7 @@ Supported migration directions:
 - Migrate OpenAI Codex Desktop from Windows to Mac.
 - Move Codex Desktop from one Windows computer to another Windows computer.
 - Move Codex Desktop from one Mac to another Mac.
+- Preserve Codex before reinstalling Windows on the same computer, then restore after reinstall.
 - Back up Codex conversations and JSONL sessions.
 - Restore Codex memories, skills, plugins, and generated images.
 - Hand off a local AI agent workspace to another computer.

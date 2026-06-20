@@ -1,6 +1,6 @@
 ---
 name: codex-rehome
-description: "Use when the user wants to migrate, back up, restore, or reproduce a Codex Desktop workspace between Mac and Windows computers in any direction, including Mac to Windows, Windows to Mac, Windows to Windows, or Mac to Mac; relevant for Codex conversations, sessions, memories, skills, plugins, MCP/connectors, automations, generated images, app data, project folders, environment inventory, path mappings, secrets handling, and Feishu/cloud-drive/external-disk handoffs."
+description: "Use when the user wants to migrate, back up, restore, or reproduce a Codex Desktop workspace between Mac and Windows computers, or preserve Codex before reinstalling the same computer's operating system; relevant for Codex conversations, sessions, memories, skills, plugins, MCP/connectors, automations, generated images, app data, project folders, environment inventory, path mappings, secrets handling, and Feishu/cloud-drive/external-disk handoffs."
 ---
 
 # Codex Rehome
@@ -13,6 +13,7 @@ Supported directions:
 - Windows -> Mac
 - Windows -> Windows
 - Mac -> Mac
+- Same computer OS reinstall: back up to a non-system partition or external disk before wiping the OS, then restore after reinstalling and logging in to Codex.
 
 ## Positioning
 
@@ -49,6 +50,7 @@ Before running commands, tell the user which stage they are in and what they nee
 - Old computer/source stage: "I will help package your old Codex conversations, projects, skills, and local state into a zip. You choose what to include; then you transfer the zip privately to the new computer."
 - Transfer stage: "Move the zip with Feishu, cloud drive, AirDrop, external disk, LAN share, or another private channel. Do not post it publicly."
 - New computer/target stage: "Install and log in to Codex first. Then give me the zip; I will unzip it, run the restore script, map old paths to this computer, merge conversation indexes, restore project folders, and register/open the projects in Codex Desktop."
+- Reinstall stage: "Before wiping the system drive, I will package Codex to a non-C drive or external disk and save restore instructions next to the zip. After reinstalling, install and log in to Codex, then give the zip and instructions to the new system's Codex."
 - Verification stage: "I will run the verifier and tell you what came back: sessions, selected chats, projects, forbidden files, and app-visible project registration."
 
 1. Identify source and target OS, usernames, and transfer channel.
@@ -65,6 +67,7 @@ Before running commands, tell the user which stage they are in and what they nee
 3. On the source computer, generate a neutral migration package.
    - Mac source: run `scripts/create_mac_codex_migration_package.sh`.
    - Windows source: run `scripts/create_windows_codex_migration_package.ps1`.
+   - Same-computer Windows reinstall: do not output the package to Desktop, Downloads, `%USERPROFILE%`, or any path that will be wiped with `C:`. Use `-Out "D:\Codex-Rehome-Backup"`, another non-system partition, or an external disk. Save the GitHub URL, README screenshot, or restore prompt in the same backup folder.
    - Best practice: install/open Codex once on the target computer, then close Codex before restoring.
    - For the cleanest package, run the packaging script after closing Codex. If running from inside Codex, tell the user that active SQLite/log files can change while copying; verify package size and rerun if needed.
    - Include optional project folders with repeated `--project /path/to/project` arguments on Mac or repeated `-Project <path>` arguments on Windows.
@@ -73,6 +76,7 @@ Before running commands, tell the user which stage they are in and what they nee
 
 4. Transfer the generated `.zip`.
    - Feishu, cloud drive, LAN share, AirDrop-to-phone-to-PC, or external disk are all acceptable.
+   - For same-computer OS reinstall, "transfer" means keeping the zip, manifests, checksum files, and restore instructions on a partition or external disk that will survive the reinstall. Confirm this before wiping the system drive.
    - Treat the package as private: it can contain auth tokens, conversation history, memories, generated files, and logs.
 
 5. On the target computer, unzip and run the restore script for that OS.
