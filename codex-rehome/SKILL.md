@@ -125,6 +125,20 @@ Real Mac source validation found this useful shape:
 - Mac restore scripts may prompt if any Codex process is running during a real restore; isolated `/tmp/codex-*` test restores continue without blocking.
 - Project folders are packaged under `projects/`. On Mac, `--restore-projects` copies them to `~/Documents/Codex-Restored-Projects` by default and then calls `codex app <restored-project-path>` so Codex Desktop registers/opens each restored project. On Windows, `-RestoreProjects` copies them to `%USERPROFILE%\Documents\Codex-Restored-Projects` by default and attempts the same `codex app <restored-project-path>` registration.
 
+## Limits To Communicate
+
+Set expectations before and after restore. This workflow restores the useful local Codex workspace, but it is not official cloud sync and it cannot promise that every old thread resumes exactly as if the machine never changed.
+
+- Old chat windows may not keep a live working-directory handle after a cross-OS move. Conversation text and session history can be restored, but a thread that originally worked inside `C:\...` may not keep editing that same folder after it becomes `/Users/...` on Mac, or the reverse. Use the restored old conversation as context, then reopen the restored project folder in Codex and continue in a new project thread when needed.
+- Project source files are only included when explicitly passed with `--project` on Mac or `-Project` on Windows. Codex history and project files are separate.
+- App sidebar visibility is not guaranteed by file copy alone. The restore scripts invoke or attempt `codex app <restored-project-path>`, but if system permissions or Codex Desktop state block it, the user must manually open the restored project folder from Codex Desktop and rerun verification.
+- Login state and browser sessions are not migrated by default. Expect to log in again to Codex, GitHub, Feishu, Gmail, browser extensions, and MCP/connectors.
+- Secrets are excluded by default: auth files, tokens, cookies, `.env`, private keys, browser Login Data, Local Storage, `.git`, `node_modules`, and virtual environments.
+- Native dependencies are not portable. Reinstall or rebuild `node_modules`, Python virtualenvs, compiled binaries, app/game/tool runtimes, and OS-specific dependencies on the target computer.
+- Running processes, open terminal sessions, unsaved editor buffers, in-memory app state, and live GUI layout are not migrated.
+- Cross-account or cross-workspace restoration can be incomplete. A conversation restored under a different Codex/OpenAI/GitHub account may be visible as local history but still need fresh authorization for remote services.
+- Verifiers check files, indexes, path mapping, selected chats, forbidden files, and best-effort project registration. Passing verification means the migration package is structurally ready; it does not guarantee that every old conversation can continue editing immediately without reopening the restored project.
+
 ## Scripts
 
 - `scripts/create_mac_codex_migration_package.sh`: Run on Mac to build a neutral migration zip with schema v3 metadata, Windows/Mac restore scripts, README, manifest, checksums, optional project folders, and optional selected chat files.
@@ -141,7 +155,13 @@ Real Mac source validation found this useful shape:
 When the user wants another Codex instance on the source computer to help, send a short instruction like:
 
 ```text
-Use the codex-rehome workflow. Create a standard <source OS>-to-<target OS> Codex migration package, include Codex data folders and these project folders: <paths>. Exclude auth files, browser login state, .env files, private keys, sockets, .git, node_modules, and virtualenvs. Put the zip on Desktop and tell me the zip path, size, manifest summary, sensitive-file report, checksum, and target restore command.
+Use the codex-rehome workflow. Create a standard <source OS>-to-<target OS> Codex migration package, include Codex data folders and these project folders: <paths>. Exclude auth files, browser login state, .env files, private keys, sockets, .git, node_modules, and virtualenvs. For normal cross-computer transfer, put the zip somewhere easy to find such as Desktop. For same-computer OS reinstall, put the zip on a surviving non-system partition or external disk, never Desktop, Downloads, %USERPROFILE%, or C:. Tell me the zip path, size, manifest summary, sensitive-file report, checksum, and target restore command.
+```
+
+For a same-computer reinstall, save a prompt like this next to the zip before wiping the system:
+
+```text
+I just reinstalled this computer. This folder contains a Codex migration package created with codex-rehome before reinstall. Use the latest instructions from https://github.com/CalebYcj/codex-rehome, unzip the package, run the restore script for this OS with project restore enabled, restore projects into the default Codex-Restored-Projects folder, register/open restored projects in Codex Desktop, then run the verifier and report which sessions, skills, plugins, and projects restored successfully. Do not restore auth tokens, browser cookies, .env files, private keys, node_modules, .git, or virtual environments.
 ```
 
 Before finalizing, report:
